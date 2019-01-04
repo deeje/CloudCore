@@ -117,9 +117,12 @@ open class CloudCore {
 
 		coreDataObserver?.stop()
 		coreDataObserver = nil
-		
-		// FIXME: unsubscribe
-	}
+
+        #if !os(watchOS)
+        let deleteSubscriptionOperation = DeleteSubscriptionOperation()
+        queue.addOperation(deleteSubscriptionOperation)
+        #endif
+    }
 	
 	// MARK: Fetchers
 	
