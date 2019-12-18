@@ -26,6 +26,8 @@ import CloudKit
 public struct CloudCoreConfig {
 	
 	// MARK: CloudKit
+    
+    public init() {}
 	
     /// The CKContainer to store CoreData. Set this to a custom container to
     /// support sharing data between multiple apps in an App Group (e.g. iOS and macOS).
