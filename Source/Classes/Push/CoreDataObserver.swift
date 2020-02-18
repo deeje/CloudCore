@@ -19,6 +19,8 @@ class CoreDataObserver {
 
 	let cloudContextName = "CloudCoreSync"
 	
+	let semaphore = DispatchSemaphore(value: 1)
+
 	// Used for errors delegation
 	weak var delegate: CloudCoreDelegate?
 	
@@ -82,6 +84,11 @@ class CoreDataObserver {
     }
     
     func processChanges() -> Bool {
+        semaphore.wait()
+        defer {
+            semaphore.signal()
+        }
+
         var success = true
         
         CloudCore.delegate?.willSyncToCloud()
