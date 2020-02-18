@@ -33,7 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
                                                name: .reachabilityChanged,
                                                object: reachability)
         
-        reachability = Reachability(hostname: "icloud.com")
+        reachability = try! Reachability(hostname: "icloud.com")
         try? reachability?.startNotifier()
         
 		return true
@@ -42,7 +42,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
     @objc private func reachabilityChanged(notification: Notification) {
         let reachability = notification.object as! Reachability
         
-        CloudCore.isOnline = reachability.connection != .none
+        CloudCore.isOnline = reachability.connection != .unavailable
     }
     
 	// Notification from CloudKit about changes in remote database
