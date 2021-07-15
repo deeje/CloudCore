@@ -16,9 +16,11 @@ class CoreDataObserver {
 	
 	let converter = ObjectToRecordConverter()
 	let pushOperationQueue = PushOperationQueue()
-
-	let cloudContextName = "CloudCoreSync"
+    
+	static let syncContextName = "CloudCoreSync"
 	
+    let processSemaphore = DispatchSemaphore(value: 1)
+    
 	// Used for errors delegation
 	weak var delegate: CloudCoreDelegate?
 	
@@ -82,12 +84,17 @@ class CoreDataObserver {
     }
     
     func processChanges() -> Bool {
+        processSemaphore.wait()
+        defer {
+            processSemaphore.signal()
+        }
+        
         var success = true
         
         CloudCore.delegate?.willSyncToCloud()
         
         let backgroundContext = container.newBackgroundContext()
-        backgroundContext.name = cloudContextName
+        backgroundContext.name = CoreDataObserver.syncContextName
         
         let records = converter.processPendingOperations(in: backgroundContext)
         pushOperationQueue.errorBlock = {
@@ -98,13 +105,15 @@ class CoreDataObserver {
         pushOperationQueue.waitUntilAllOperationsAreFinished()
         
         if success {
-            do {
-                if backgroundContext.hasChanges {
-                    try backgroundContext.save()
+            backgroundContext.performAndWait {
+                do {
+                    if backgroundContext.hasChanges {
+                        try backgroundContext.save()
+                    }
+                } catch {
+                    delegate?.error(error: error, module: .some(.pushToCloud))
+                    success = false
                 }
-            } catch {
-                delegate?.error(error: error, module: .some(.pushToCloud))
-                success = false
             }
         }
         
@@ -221,14 +230,13 @@ class CoreDataObserver {
             }
             
             container.performBackgroundTask { (moc) in
-                let key = "lastPersistentHistoryTokenKey"
                 let settings = UserDefaults.standard
-                var token: NSPersistentHistoryToken? = nil
-                if let data = settings.object(forKey: key) as? Data {
-                     token = NSKeyedUnarchiver.unarchiveObject(with: data) as? NSPersistentHistoryToken
-                }
-                let historyRequest = NSPersistentHistoryChangeRequest.fetchHistory(after: token)
                 do {
+                    var token: NSPersistentHistoryToken? = nil
+                    if let data = settings.object(forKey: CloudCore.config.persistentHistoryTokenKey) as? Data {
+                        token = try NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSPersistentHistoryToken.classForKeyedUnarchiver()], from: data) as? NSPersistentHistoryToken
+                    }
+                    let historyRequest = NSPersistentHistoryChangeRequest.fetchHistory(after: token)
                     let historyResult = try moc.execute(historyRequest) as! NSPersistentHistoryResult
                     
                     if let history = historyResult.result as? [NSPersistentHistoryTransaction] {
@@ -237,8 +245,8 @@ class CoreDataObserver {
                                 let deleteRequest = NSPersistentHistoryChangeRequest.deleteHistory(before: transaction)
                                 try moc.execute(deleteRequest)
                                 
-                                let data = NSKeyedArchiver.archivedData(withRootObject: transaction.token)
-                                settings.set(data, forKey: key)
+                                let data = try NSKeyedArchiver.archivedData(withRootObject: transaction.token, requiringSecureCoding: false)
+                                settings.set(data, forKey: CloudCore.config.persistentHistoryTokenKey)
                             } else {
                                 break
                             }
@@ -248,7 +256,7 @@ class CoreDataObserver {
                     let nserror = error as NSError
                     switch nserror.code {
                     case NSPersistentHistoryTokenExpiredError:
-                        settings.set(nil, forKey: key)
+                        settings.set(nil, forKey: CloudCore.config.persistentHistoryTokenKey)
                     default:
                         fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
                     }
@@ -276,17 +284,17 @@ class CoreDataObserver {
 			}
 			
 			// Subscribe operation
-			#if !os(watchOS)
-				let subscribeOperation = SubscribeOperation()
-				subscribeOperation.errorBlock = { self.delegate?.error(error: $0, module: .some(.pushToCloud)) }
-				subscribeOperation.addDependency(createZoneOperation)
-				pushOperationQueue.addOperation(subscribeOperation)
-			#endif
+            let subscribeOperation = SubscribeOperation()
+            subscribeOperation.errorBlock = { self.delegate?.error(error: $0, module: .some(.pushToCloud)) }
+            subscribeOperation.addDependency(createZoneOperation)
+            
+            pushOperationQueue.addOperation(subscribeOperation)
 			
 			// Upload all local data
 			let uploadOperation = PushAllLocalDataOperation(parentContext: parentContext, managedObjectModel: container.managedObjectModel)
 			uploadOperation.errorBlock = { self.delegate?.error(error: $0, module: .some(.pushToCloud)) }
-			
+            uploadOperation.addDependency(createZoneOperation)
+            
 			pushOperationQueue.addOperations([createZoneOperation, uploadOperation], waitUntilFinished: true)
 		case .operationCancelled: return
 		default: delegate?.error(error: cloudError, module: .some(.pushToCloud))

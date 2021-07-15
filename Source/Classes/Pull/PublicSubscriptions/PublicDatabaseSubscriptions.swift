@@ -10,7 +10,6 @@ import CloudKit
 
 // Use that class to manage subscriptions to public CloudKit database.
 // If you want to sync some records with public database you need to subsrcibe for notifications on that changes to enable iCloud -> Local database syncing.
-#if !os(watchOS)
 public class PublicDatabaseSubscriptions {
     
     private static var prefix: String { return CloudCore.config.publicSubscriptionIDPrefix }
@@ -28,23 +27,26 @@ public class PublicDatabaseSubscriptions {
         if self.cachedIDs.firstIndex(of: id) != nil { return }
         
         let options: CKQuerySubscription.Options = [.firesOnRecordCreation, .firesOnRecordUpdate, .firesOnRecordDeletion]
-        let subscription = CKQuerySubscription(recordType: recordType, predicate: predicate, subscriptionID: id, options: options)
+        let querySubscription = CKQuerySubscription(recordType: recordType, predicate: predicate, subscriptionID: id, options: options)
         
         let notificationInfo = CKSubscription.NotificationInfo()
         notificationInfo.shouldSendContentAvailable = true
-        subscription.notificationInfo = notificationInfo
+        querySubscription.notificationInfo = notificationInfo
         
-        let operation = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
-        operation.modifySubscriptionsCompletionBlock = { _, _, error in
+        let modifySubscriptions = CKModifySubscriptionsOperation(subscriptionsToSave: [querySubscription], subscriptionIDsToDelete: [])
+        modifySubscriptions.modifySubscriptionsCompletionBlock = { _, _, error in
             if error == nil {
-                self.cachedIDs.append(subscription.subscriptionID)
+                self.cachedIDs.append(querySubscription.subscriptionID)
             }
 
-            completion?(subscription.subscriptionID, error)
+            completion?(querySubscription.subscriptionID, error)
         }
         
-        operation.timeoutIntervalForResource = 20
-        CKContainer.default().publicCloudDatabase.add(operation)
+        let config = CKOperation.Configuration()
+        config.timeoutIntervalForResource = 20
+        modifySubscriptions.configuration = config
+        
+        CloudCore.config.container.publicCloudDatabase.add(modifySubscriptions)
     }
     
     // Unsubscribe from public database
@@ -52,8 +54,8 @@ public class PublicDatabaseSubscriptions {
     // - Parameters:
     //   - subscriptionID: id of subscription to remove
     static public func unsubscribe(subscriptionID: String, completion: ((Error?) -> Void)?) {
-        let operation = CKModifySubscriptionsOperation(subscriptionsToSave: [], subscriptionIDsToDelete: [subscriptionID])
-        operation.modifySubscriptionsCompletionBlock = { _, _, error in
+        let modifySubscription = CKModifySubscriptionsOperation(subscriptionsToSave: [], subscriptionIDsToDelete: [subscriptionID])
+        modifySubscription.modifySubscriptionsCompletionBlock = { _, _, error in
             if error == nil {
                 if let index = self.cachedIDs.firstIndex(of: subscriptionID) {
                     self.cachedIDs.remove(at: index)
@@ -63,8 +65,11 @@ public class PublicDatabaseSubscriptions {
             completion?(error)
         }
         
-        operation.timeoutIntervalForResource = 20
-        CKContainer.default().publicCloudDatabase.add(operation)
+        let config = CKOperation.Configuration()
+        config.timeoutIntervalForResource = 20
+        modifySubscription.configuration = config
+        
+        CloudCore.config.container.publicCloudDatabase.add(modifySubscription)
     }
     
     
@@ -94,4 +99,3 @@ public class PublicDatabaseSubscriptions {
     }
     
 }
-#endif

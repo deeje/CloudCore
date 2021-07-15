@@ -14,6 +14,13 @@ class CreateCloudCoreZoneOperation: AsynchronousOperation {
 	var errorBlock: ErrorBlock?
 	private var createZoneOperation: CKModifyRecordZonesOperation?
 	
+    public override init() {
+        super.init()
+        
+        name = "CreateCloudCoreZoneOperation"
+        qualityOfService = .userInteractive
+    }
+    
 	override func main() {
 		super.main()
 

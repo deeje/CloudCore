@@ -13,19 +13,30 @@ class DeleteFromCoreDataOperation: Operation {
 	let parentContext: NSManagedObjectContext
     let recordID: CKRecord.ID
 	var errorBlock: ErrorBlock?
-	
+    
     init(parentContext: NSManagedObjectContext, recordID: CKRecord.ID) {
 		self.parentContext = parentContext
 		self.recordID = recordID
 		
 		super.init()
 		
-		self.name = "DeleteFromCoreDataOperation"
+        name = "DeleteFromCoreDataOperation"
+        qualityOfService = .userInteractive
 	}
 	
 	override func main() {
 		if self.isCancelled { return }
 		
+        #if TARGET_OS_IOS
+        let app = UIApplication.shared
+        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        defer {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        #endif
+        
 		let childContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         childContext.performAndWait {
             childContext.parent = parentContext

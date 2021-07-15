@@ -19,7 +19,7 @@ class FetchRecordZoneChangesOperation: Operation {
 	var recordChangedBlock: ((CKRecord) -> Void)?
 	var recordWithIDWasDeletedBlock: ((CKRecord.ID) -> Void)?
 	
-    private let optionsByRecordZoneID: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneOptions]
+    private let optionsByRecordZoneID: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration]
 	private let fetchQueue = OperationQueue()
 	
 	init(from database: CKDatabase, recordZoneIDs: [CKRecordZone.ID], tokens: Tokens) {
@@ -27,40 +27,54 @@ class FetchRecordZoneChangesOperation: Operation {
 		self.database = database
 		self.recordZoneIDs = recordZoneIDs
 		
-        var optionsByRecordZoneID = [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneOptions]()
+        var optionsByRecordZoneID = [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration]()
 		for zoneID in recordZoneIDs {
-            let options = CKFetchRecordZoneChangesOperation.ZoneOptions()
-			options.previousServerChangeToken = self.tokens.tokensByRecordZoneID[zoneID]
+            let options = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
+            options.previousServerChangeToken = self.tokens.token(for: zoneID)
 			optionsByRecordZoneID[zoneID] = options
 		}
 		self.optionsByRecordZoneID = optionsByRecordZoneID
 		
 		super.init()
 		
-		self.name = "FetchRecordZoneChangesOperation"
+        name = "FetchRecordZoneChangesOperation"
+        qualityOfService = .userInteractive
 	}
 	
 	override func main() {
 		super.main()
-
+        
+        #if TARGET_OS_IOS
+        let app = UIApplication.shared
+        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        defer {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        #endif
+        
 		let fetchOperation = self.makeFetchOperation(optionsByRecordZoneID: optionsByRecordZoneID)
-		fetchQueue.addOperation(fetchOperation)
+        let finish = BlockOperation { }
+        finish.addDependency(fetchOperation)
+        database.add(fetchOperation)
+		fetchQueue.addOperation(finish)
 		
 		fetchQueue.waitUntilAllOperationsAreFinished()
 	}
 	
-    private func makeFetchOperation(optionsByRecordZoneID: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneOptions]) -> CKFetchRecordZoneChangesOperation {
+    private func makeFetchOperation(optionsByRecordZoneID: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration]) -> CKFetchRecordZoneChangesOperation {
 		// Init Fetch Operation
-		let fetchOperation = CKFetchRecordZoneChangesOperation(recordZoneIDs: recordZoneIDs, optionsByRecordZoneID: optionsByRecordZoneID)
-		        
-		fetchOperation.recordChangedBlock = {
+		let fetchRecordZoneChanges = CKFetchRecordZoneChangesOperation(recordZoneIDs: recordZoneIDs, configurationsByRecordZoneID: optionsByRecordZoneID)
+        
+		fetchRecordZoneChanges.recordChangedBlock = {
 			self.recordChangedBlock?($0)
 		}
-		fetchOperation.recordWithIDWasDeletedBlock = { recordID, _ in
+		fetchRecordZoneChanges.recordWithIDWasDeletedBlock = { recordID, _ in
 			self.recordWithIDWasDeletedBlock?(recordID)
 		}
-		fetchOperation.recordZoneFetchCompletionBlock = { zoneId, serverChangeToken, clientChangeTokenData, isMore, error in
-			self.tokens.tokensByRecordZoneID[zoneId] = serverChangeToken
+		fetchRecordZoneChanges.recordZoneFetchCompletionBlock = { zoneId, serverChangeToken, clientChangeTokenData, isMore, error in
+            self.tokens.setToken(serverChangeToken, for: zoneId)
 			
 			if let error = error {
 				self.errorBlock?(zoneId, error)
@@ -68,13 +82,16 @@ class FetchRecordZoneChangesOperation: Operation {
 			
 			if isMore {
 				let moreOperation = self.makeFetchOperation(optionsByRecordZoneID: optionsByRecordZoneID)
-				self.fetchQueue.addOperation(moreOperation)
+                let finish = BlockOperation { }
+                finish.addDependency(moreOperation)
+                self.database.add(moreOperation)
+				self.fetchQueue.addOperation(finish)
 			}
 		}
 		
-		fetchOperation.qualityOfService = self.qualityOfService
-		fetchOperation.database = self.database
-		
-		return fetchOperation
+        fetchRecordZoneChanges.database = self.database
+        fetchRecordZoneChanges.qualityOfService = .userInteractive
+
+		return fetchRecordZoneChanges
 	}
 }

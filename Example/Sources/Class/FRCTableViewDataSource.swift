@@ -4,7 +4,7 @@
 import UIKit
 import CoreData
 
-protocol FRCTableViewDelegate: class {
+protocol FRCTableViewDelegate: AnyObject {
 	func frcTableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell
 }
 
@@ -59,47 +59,11 @@ class FRCTableViewDataSource<FetchRequestResult: NSFetchRequestResult>: NSObject
 	
 	// MARK: - NSFetchedResultsControllerDelegate
 	
-	func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-		tableView?.beginUpdates()
-	}
-	
-	func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
-		let sectionIndexSet = IndexSet(integer: sectionIndex)
-		
-		switch type {
-		case .insert: tableView?.insertSections(sectionIndexSet, with: .automatic)
-		case .delete: tableView?.deleteSections(sectionIndexSet, with: .automatic)
-		case .update: tableView?.reloadSections(sectionIndexSet, with: .automatic)
-		case .move: break
-        @unknown default:
-            break
-        }
-	}
-	
-	func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
-		switch type {
-		case .insert:
-			guard let newIndexPath = newIndexPath else { break }
-			tableView?.insertRows(at: [newIndexPath], with: .automatic)
-		case .delete:
-			guard let indexPath = indexPath else { break }
-			tableView?.deleteRows(at: [indexPath], with: .automatic)
-		case .update:
-			guard let indexPath = indexPath else { break }
-			tableView?.reloadRows(at: [indexPath], with: .automatic)
-		case .move:
-			guard let indexPath = indexPath, let newIndexPath = newIndexPath else { return }
-			tableView?.moveRow(at: indexPath, to: newIndexPath)
-        @unknown default:
-            break
-        }
-	}
-	
-	func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-		tableView?.endUpdates()
-	}
-	
+        // there are better ways to handle this
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        tableView?.reloadData()
+    }
+
 	func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { return nil }
 
 }
-

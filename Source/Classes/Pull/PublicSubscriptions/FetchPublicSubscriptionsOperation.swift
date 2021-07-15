@@ -10,17 +10,23 @@ import CloudKit
 
 /// Fetch CloudCore's subscriptions from Public CKDatabase
 
-#if !os(watchOS)
 class FetchPublicSubscriptionsOperation: AsynchronousOperation {
     var errorBlock: ErrorBlock?
     var fetchCompletionBlock: (([CKSubscription]) -> Void)?
     
     private let prefix = CloudCore.config.publicSubscriptionIDPrefix
     
+    public override init() {
+        super.init()
+        
+        name = "FetchPublicSubscriptionsOperation"
+        qualityOfService = .userInteractive
+    }
+    
     override func main() {
         super.main()
         
-        CKContainer.default().publicCloudDatabase.fetchAllSubscriptions { (subscriptions, error) in
+        CloudCore.config.container.publicCloudDatabase.fetchAllSubscriptions { (subscriptions, error) in
             defer {
                 self.state = .finished
             }
@@ -45,4 +51,3 @@ class FetchPublicSubscriptionsOperation: AsynchronousOperation {
         }
     }
 }
-#endif

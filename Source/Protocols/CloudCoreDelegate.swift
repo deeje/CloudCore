@@ -11,7 +11,7 @@ import Foundation
 /// Delegate for framework that can be used for proccesses tracking and error handling.
 /// Maybe usefull to activate `UIApplication.networkActivityIndicatorVisible`.
 /// All methods are optional.
-public protocol CloudCoreDelegate: class {
+public protocol CloudCoreDelegate: AnyObject {
 	
 	// MARK: Notifications
 	

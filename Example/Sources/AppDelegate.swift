@@ -9,7 +9,7 @@
 import UIKit
 import CoreData
 import CloudCore
-import Reachability
+import Connectivity
 
 let persistentContainer = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
 
@@ -18,7 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
 	
 	let delegateHandler = CloudCoreDelegateHandler()
     
-    var reachability: Reachability?
+    var connectivity: Connectivity?
     
 	func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 		// Register for push notifications about changes
@@ -28,23 +28,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
 		CloudCore.delegate = delegateHandler
 		CloudCore.enable(persistentContainer: persistentContainer)
 		
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(reachabilityChanged(notification:)),
-                                               name: .reachabilityChanged,
-                                               object: reachability)
+        let connectivityChanged: (Connectivity) -> Void = { connectivity in
+            let online : [ConnectivityStatus] = [.connected, .connectedViaCellular, .connectedViaWiFi]
+            CloudCore.isOnline = online.contains(connectivity.status)
+        }
         
-        reachability = Reachability(hostname: "icloud.com")
-        try? reachability?.startNotifier()
+        connectivity = Connectivity(shouldUseHTTPS: false)
+        connectivity?.whenConnected = connectivityChanged
+        connectivity?.whenDisconnected = connectivityChanged
+        connectivity?.startNotifier()
         
 		return true
 	}
-	
-    @objc private func reachabilityChanged(notification: Notification) {
-        let reachability = notification.object as! Reachability
-        
-        CloudCore.isOnline = reachability.connection != .none
-    }
-    
+	    
 	// Notification from CloudKit about changes in remote database
 	func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
 		// Check if it CloudKit's and CloudCore notification
@@ -57,7 +53,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UISplitViewControllerDele
 			})
 		}
 	}
-		
+    
+    // User accepted a sharing link, pull the complete record
+    func application(_ application: UIApplication,
+                     userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
+        let acceptShareOperation = CKAcceptSharesOperation(shareMetadatas: [cloudKitShareMetadata])
+        acceptShareOperation.qualityOfService = .userInteractive
+        acceptShareOperation.perShareCompletionBlock = { meta, share, error in
+            CloudCore.pull(rootRecordID: meta.rootRecordID, container: self.persistentContainer, error: nil) { }
+        }
+        acceptShareOperation.acceptSharesCompletionBlock = { error in
+            // N/A
+        }
+        CKContainer(identifier: cloudKitShareMetadata.containerIdentifier).add(acceptShareOperation)
+    }
+    
 	// MARK: - Default Apple initialization, you can skip that
 	
 	var window: UIWindow?

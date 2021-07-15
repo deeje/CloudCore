@@ -17,6 +17,8 @@ class DetailViewController: UITableViewController {
 	
 	private var tableDataSource: DetailTableDataSource!
 	
+    private var sharingController: CloudCoreSharingController!
+    
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		
@@ -29,15 +31,24 @@ class DetailViewController: UITableViewController {
 		tableView.dataSource = tableDataSource
 		try! tableDataSource.performFetch()
         
-        let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(add(_:)))
-        let renameButton = UIBarButtonItem(title: "Rename", style: .plain, target: self, action: #selector(rename(_:)))
-        navigationItem.setRightBarButtonItems([addButton, renameButton], animated: false)
+        guard let organization = try? self.context.existingObject(with: self.organizationID) as? CloudCoreSharing else { return }
+        
+        var buttons: [UIBarButtonItem] = []
+        if organization.isOwnedByCurrentUser {
+            let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(add(_:)))
+            buttons.append(addButton)
+            
+            let renameButton = UIBarButtonItem(title: "Rename", style: .plain, target: self, action: #selector(rename(_:)))
+            buttons.append(renameButton)
+        }
+        let shareButton = UIBarButtonItem(title: "Share", style: .plain, target: self, action: #selector((share(_:))))
+        buttons.append(shareButton)
+        
+        navigationItem.setRightBarButtonItems(buttons, animated: false)
 	}
     
 	@objc private func add(_ sender: UIBarButtonItem) {
-        persistentContainer.performBackgroundTask { (moc) in
-            moc.name = CloudCore.config.pushContextName
-
+        persistentContainer.performBackgroundPushTask { (moc) in
             let employee = ModelFactory.insertEmployee(context: moc)
             let organization = try? moc.existingObject(with: self.organizationID) as? Organization
             employee.organization = organization
@@ -48,9 +59,7 @@ class DetailViewController: UITableViewController {
 	
 	@objc private func rename(_ sender: UIBarButtonItem) {
         let newTitle = ModelFactory.newCompanyName()
-        persistentContainer.performBackgroundTask { (moc) in
-            moc.name = CloudCore.config.pushContextName
-
+        persistentContainer.performBackgroundPushTask { (moc) in
             let organization = try? moc.existingObject(with: self.organizationID) as? Organization
             organization?.name = newTitle
             
@@ -58,6 +67,25 @@ class DetailViewController: UITableViewController {
         }
         self.title = newTitle
 	}
+    
+    @objc private func share(_ sender: UIBarButtonItem) {
+        iCloudAvailable { available in
+            guard available else { return }
+            
+            guard let organization = try? self.context.existingObject(with: self.organizationID) as? CloudCoreSharing else { return }
+            
+            if self.sharingController == nil {
+                self.sharingController = CloudCoreSharingController(persistentContainer: persistentContainer,
+                                                                object: organization)
+            }
+            self.sharingController.configureSharingController(permissions: [.allowReadOnly, .allowPrivate, .allowPublic]) { csc in
+                if let csc = csc {
+                    csc.popoverPresentationController?.barButtonItem = sender
+                    self.present(csc, animated:true, completion:nil)
+                }
+            }
+        }
+    }
 
 }
 
@@ -104,8 +132,7 @@ extension DetailViewController {
                                                 let anObject = self?.tableDataSource.object(at: indexPath)
                                                 let objectID = anObject?.objectID
                                                 
-                                                persistentContainer.performBackgroundTask { (moc) in
-                                                    moc.name = CloudCore.config.pushContextName
+                                                persistentContainer.performBackgroundPushTask { (moc) in
                                                     if let objectToDelete = try? moc.existingObject(with: objectID!) {
                                                         moc.delete(objectToDelete)
                                                         try? moc.save()

@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		57505AB021A7591500D9CF8F /* PullResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57505AAF21A7591500D9CF8F /* PullResult.swift */; };
+		575ADF462655AB7C0050D693 /* PullRecordOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575ADF442655AB7C0050D693 /* PullRecordOperation.swift */; };
+		575ADF472655AB7C0050D693 /* PullChangesOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575ADF452655AB7C0050D693 /* PullChangesOperation.swift */; };
 		D9089D4A1FE14E57000FC60C /* SetupOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9089D491FE14E57000FC60C /* SetupOperation.swift */; };
 		D97465F81FE319930060EA66 /* CloudCoreDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97465F71FE319930060EA66 /* CloudCoreDelegate.swift */; };
 		D97465FA1FE31A650060EA66 /* Module.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97465F91FE31A650060EA66 /* Module.swift */; };
@@ -89,6 +91,8 @@
 /* Begin PBXFileReference section */
 		245F765CC7CBF0507158B4A9 /* Pods_CloudCoreTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CloudCoreTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		57505AAF21A7591500D9CF8F /* PullResult.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PullResult.swift; sourceTree = "<group>"; };
+		575ADF442655AB7C0050D693 /* PullRecordOperation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PullRecordOperation.swift; sourceTree = "<group>"; };
+		575ADF452655AB7C0050D693 /* PullChangesOperation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PullChangesOperation.swift; sourceTree = "<group>"; };
 		8EAC4D8B1B0EF4ECE4BDA160 /* Pods_CloudCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CloudCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5B2E89F1C3A780C00C0327D /* CloudCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = CloudCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5C6298B1C3A8BBD007F7B7C /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -338,6 +342,8 @@
 				E277DB0F1E77FC9F00DC334A /* PublicSubscriptions */,
 				E2C02A171E4CDEDA001B2871 /* SubOperations */,
 				E2E4D83D1E76D4EF00550CBE /* PullOperation.swift */,
+				575ADF452655AB7C0050D693 /* PullChangesOperation.swift */,
+				575ADF442655AB7C0050D693 /* PullRecordOperation.swift */,
 			);
 			path = Pull;
 			sourceTree = "<group>";
@@ -704,8 +710,10 @@
 				D9089D4A1FE14E57000FC60C /* SetupOperation.swift in Sources */,
 				D97465FA1FE31A650060EA66 /* Module.swift in Sources */,
 				57505AB021A7591500D9CF8F /* PullResult.swift in Sources */,
+				575ADF472655AB7C0050D693 /* PullChangesOperation.swift in Sources */,
 				E29BB2371E4377F80020F5B6 /* CoreDataAttribute.swift in Sources */,
 				E2E296CA1E49DA0800E7D6ED /* Tokens.swift in Sources */,
+				575ADF462655AB7C0050D693 /* PullRecordOperation.swift in Sources */,
 				E2075FFF1E4BCD7E00E31F1F /* ObjectToRecordOperation.swift in Sources */,
 				E2564BFF1E5061BC002E518B /* ErrorBlockProxy.swift in Sources */,
 				D985DEA41FE026D400236870 /* CreateCloudCoreZoneOperation.swift in Sources */,
@@ -848,16 +856,18 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SUPPORTED_PLATFORMS = "macosx watchsimulator watchos appletvsimulator appletvos iphonesimulator iphoneos";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 3.0;
 				TARGETED_DEVICE_FAMILY = "1,2,3,4";
+				TVOS_DEPLOYMENT_TARGET = 13.0;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
+				WATCHOS_DEPLOYMENT_TARGET = 6.0;
 			};
 			name = Debug;
 		};
@@ -902,16 +912,18 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SUPPORTED_PLATFORMS = "macosx watchsimulator watchos appletvsimulator appletvos iphonesimulator iphoneos";
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_VERSION = 3.0;
 				TARGETED_DEVICE_FAMILY = "1,2,3,4";
+				TVOS_DEPLOYMENT_TARGET = 13.0;
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
+				WATCHOS_DEPLOYMENT_TARGET = 6.0;
 			};
 			name = Release;
 		};
@@ -935,8 +947,6 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 				SWIFT_VERSION = 5.0;
-				TVOS_DEPLOYMENT_TARGET = 10.0;
-				WATCHOS_DEPLOYMENT_TARGET = 3.0;
 			};
 			name = Debug;
 		};
@@ -959,8 +969,6 @@
 				SKIP_INSTALL = YES;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
 				SWIFT_VERSION = 5.0;
-				TVOS_DEPLOYMENT_TARGET = 10.0;
-				WATCHOS_DEPLOYMENT_TARGET = 3.0;
 			};
 			name = Release;
 		};
@@ -980,7 +988,6 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = Tests/CloudKitTests/App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -1005,7 +1012,6 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = Tests/CloudKitTests/App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 4.2;
@@ -1027,7 +1033,6 @@
 				DEVELOPMENT_TEAM = 7X2PJ6H6YM;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = Tests/CloudKitTests/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cloudtests.CloudKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1052,7 +1057,6 @@
 				DEVELOPMENT_TEAM = 7X2PJ6H6YM;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = Tests/CloudKitTests/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = cloudtests.CloudKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1071,7 +1075,6 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Tests/CloudCoreTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.2;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = uvasily.CloudCoreTests;
@@ -1090,7 +1093,6 @@
 				CODE_SIGN_IDENTITY = "";
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Tests/CloudCoreTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.2;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = uvasily.CloudCoreTests;

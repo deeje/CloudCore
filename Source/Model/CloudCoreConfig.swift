@@ -41,15 +41,15 @@ public struct CloudCoreConfig {
     public func privateZoneID() -> CKRecordZone.ID {
         return CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
     }
-	let subscriptionIDForPrivateDB = "CloudCorePrivate"
-	let subscriptionIDForSharedDB = "CloudCoreShared"
+    public let subscriptionIDForPrivateDB = "CloudCorePrivate"
+    public let subscriptionIDForSharedDB = "CloudCoreShared"
 	
 	/// subscriptionID's prefix for custom CKSubscription in public databases
-	var publicSubscriptionIDPrefix = "CloudCore-"
+    public var publicSubscriptionIDPrefix = "CloudCore-"
 	
 	// MARK: Core Data
     public let pushContextName = "CloudCorePushContext"
-    let pullContextName = "CloudCorePullContext"
+    public let pullContextName = "CloudCorePullContext"
 
     /// Default entity's attribute name for *Record Name* if User Info is not specified
     ///
@@ -77,5 +77,10 @@ public struct CloudCoreConfig {
 	///
 	/// Default value is `CloudCoreTokens`
 	public var userDefaultsKeyTokens = "CloudCoreTokens"
+    public var persistentHistoryTokenKey = "lastPersistentHistoryTokenKey"
 	
+    public init() {
+        
+    }
+    
 }

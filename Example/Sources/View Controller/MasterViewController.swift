@@ -32,8 +32,7 @@ class MasterViewController: UITableViewController {
 	}
     
 	@IBAction func addButtonClicked(_ sender: UIBarButtonItem) {
-        persistentContainer.performBackgroundTask { (moc) in
-            moc.name = CloudCore.config.pushContextName
+        persistentContainer.performBackgroundPushTask { (moc) in
             ModelFactory.insertOrganizationWithEmployees(context: moc)
             try! moc.save()
         }
@@ -88,26 +87,71 @@ extension MasterViewController {
 
     @available(iOS 11.0, *)
     override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        let deleteTitle = NSLocalizedString("Delete", comment: "Delete action")
-        let deleteAction = UIContextualAction(style: .destructive, title: deleteTitle,
-                                              handler: { [weak self] action, view, completionHandler in
-                                                
-                                                let anObject = self?.tableDataSource.object(at: indexPath)
-                                                let objectID = anObject?.objectID
-                                                
-                                                persistentContainer.performBackgroundTask { (moc) in
-                                                    moc.name = CloudCore.config.pushContextName
-                                                    if let objectToDelete = try? moc.existingObject(with: objectID!) {
-                                                        moc.delete(objectToDelete)
-                                                        try? moc.save()
-                                                    }
-                                                }
-                                                
-                                                completionHandler(true)
-        })
+        var actions: [UIContextualAction] = []
         
-        let configuration = UISwipeActionsConfiguration(actions: [deleteAction])
+        let anObject = tableDataSource.object(at: indexPath) as Organization
+        if anObject.isOwnedByCurrentUser {
+            let deleteTitle = NSLocalizedString("Delete", comment: "Delete action")
+            let deleteAction = UIContextualAction(style: .destructive, title: deleteTitle) { [weak self] action, view, completionHandler in
+                self?.confirmDelete(objectID: anObject.objectID, completion: completionHandler)
+            }
+            actions.append(deleteAction)
+        } else {
+            let RemoveTitle = NSLocalizedString("Remove", comment: "Remove action")
+            let removeAction = UIContextualAction(style: .destructive, title: RemoveTitle) { [weak self] action, view, completionHandler in
+                self?.confirmRemove(objectID: anObject.objectID, completion: completionHandler)
+            }
+            actions.append(removeAction)
+        }
+        
+        let configuration = UISwipeActionsConfiguration(actions: actions)
         return configuration
+    }
+    
+    func confirmDelete(objectID: NSManagedObjectID, completion: @escaping ((Bool) -> Void) ) {
+        let alert = UIAlertController(title: "Are you sure you want to delete?", message: "This will permanently delete this object from all devices", preferredStyle: .alert)
+        let confirm = UIAlertAction(title: "Delete", style: .destructive) { _ in
+            persistentContainer.performBackgroundPushTask { moc in
+                if let personEntity = try? moc.existingObject(with: objectID) {
+                    moc.delete(personEntity)
+                    try? moc.save()
+                }
+                completion(true)
+            }
+        }
+        alert.addAction(confirm)
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            completion(false)
+        }
+        alert.addAction(cancel)
+        self.present(alert, animated: true)
+    }
+    
+    func confirmRemove(objectID: NSManagedObjectID, completion: @escaping ((Bool) -> Void) ) {
+        let alert = UIAlertController(title: "Are you sure you want to remove?", message: "This will permanently remove this object from all your devices", preferredStyle: .alert)
+        let confirm = UIAlertAction(title: "Remove", style: .destructive) { _ in
+            guard let object = (try? self.context.existingObject(with: objectID)) as? Organization else { return }
+            
+            object.stopSharing(in: persistentContainer) { didStop in
+                if didStop {
+                    persistentContainer.performBackgroundTask { moc in
+                        if let deleteObject = try? moc.existingObject(with: objectID) {
+                            moc.delete(deleteObject)
+                            try? moc.save()
+                        }
+                        completion(true)
+                    }
+                } else {
+                    completion(false)
+                }
+            }
+        }
+        alert.addAction(confirm)
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            completion(false)
+        }
+        alert.addAction(cancel)
+        self.present(alert, animated: true)
     }
 
 }

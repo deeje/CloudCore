@@ -9,14 +9,19 @@
 import Foundation
 import CloudKit
 
-#if !os(watchOS)
-@available(watchOS, unavailable)
 class SubscribeOperation: AsynchronousOperation {
 	
 	var errorBlock: ErrorBlock?
 	
 	private let queue = OperationQueue()
-
+    
+    public override init() {
+        super.init()
+        
+        name = "SubscribeOperation"
+        qualityOfService = .userInteractive
+    }
+    
 	override func main() {
 		super.main()
 
@@ -43,23 +48,25 @@ class SubscribeOperation: AsynchronousOperation {
         finishOperation.addDependency(subscribeToShared)
         finishOperation.addDependency(fetchSharedSubscription)
 
-		queue.addOperations([subcribeToPrivate,
-                             fetchPrivateSubscription,
-                             subscribeToShared,
-                             fetchSharedSubscription,
-                             finishOperation], waitUntilFinished: false)
+        subcribeToPrivate.database?.add(subcribeToPrivate)
+        fetchPrivateSubscription.database?.add(fetchPrivateSubscription)
+        subscribeToShared.database?.add(subscribeToShared)
+        fetchSharedSubscription.database?.add(fetchSharedSubscription)
+        
+		queue.addOperation(finishOperation)
 	}
 	
 	private func makeRecordZoneSubscriptionOperation(for database: CKDatabase, id: String) -> CKModifySubscriptionsOperation {
         let notificationInfo = CKSubscription.NotificationInfo()
 		notificationInfo.shouldSendContentAvailable = true
 		
-        let subscription = (database == CloudCore.config.container.sharedCloudDatabase) ?CKDatabaseSubscription(subscriptionID: id) :
+        let subscription = (database == CloudCore.config.container.sharedCloudDatabase) ? CKDatabaseSubscription(subscriptionID: id) :
             CKRecordZoneSubscription(zoneID: CloudCore.config.privateZoneID(), subscriptionID: id)
         subscription.notificationInfo = notificationInfo
 
-		let operation = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
-		operation.modifySubscriptionsCompletionBlock = {
+		let modifySubscriptions = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
+        modifySubscriptions.database = database
+		modifySubscriptions.modifySubscriptionsCompletionBlock = {
 			if let error = $2 {
 				// Cancellation is not an error
 				if case CKError.operationCancelled = error { return }
@@ -68,9 +75,9 @@ class SubscribeOperation: AsynchronousOperation {
 			}
 		}
 		
-		operation.database = database
+        modifySubscriptions.qualityOfService = .userInteractive
 		
-		return operation
+		return modifySubscriptions
 	}
 	
 	private func makeFetchSubscriptionOperation(for database: CKDatabase, searchForSubscriptionID subscriptionID: String, operationToCancelIfSubcriptionExists operationToCancel: CKModifySubscriptionsOperation) -> CKFetchSubscriptionsOperation {
@@ -82,9 +89,9 @@ class SubscribeOperation: AsynchronousOperation {
 				operationToCancel.cancel()
 			}
 		}
-		
+        fetchSubscriptions.qualityOfService = .userInteractive
+        
 		return fetchSubscriptions
 	}
 	
 }
-#endif

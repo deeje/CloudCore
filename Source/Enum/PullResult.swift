@@ -35,3 +35,15 @@ public enum PullResult: UInt {
 		
 	}
 #endif
+
+#if os(watchOS)
+    import WatchKit
+    
+    public extension PullResult {
+        
+        var wkBackgroundFetchResult: WKBackgroundFetchResult {
+            return WKBackgroundFetchResult(rawValue: self.rawValue)!
+        }
+        
+    }
+#endif

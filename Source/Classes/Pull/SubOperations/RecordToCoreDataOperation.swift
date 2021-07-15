@@ -29,12 +29,23 @@ public class RecordToCoreDataOperation: AsynchronousOperation {
 		
 		super.init()
 		
-		self.name = "RecordToCoreDataOperation"
+        name = "RecordToCoreDataOperation"
+        qualityOfService = .userInteractive
 	}
 	
     override public func main() {
 		if self.isCancelled { return }
-
+        
+        #if TARGET_OS_IOS
+        let app = UIApplication.shared
+        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        defer {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        #endif
+        
         parentContext.performAndWait {
             do {
                 try self.setManagedObject(in: self.parentContext)
@@ -82,30 +93,30 @@ public class RecordToCoreDataOperation: AsynchronousOperation {
 			let recordValue = record.value(forKey: key)
 			
 			let ckAttribute = CloudKitAttribute(value: recordValue, fieldName: key, entityName: entityName, serviceAttributes: serviceAttributeNames, context: context)
-			let coreDataValue = try ckAttribute.makeCoreDataValue()
-            
-            if let cdAttribute = object.entity.attributesByName[key], cdAttribute.attributeType == .transformableAttributeType,
-                let data = coreDataValue as? Data {
-                if let name = cdAttribute.valueTransformerName, let transformer = ValueTransformer(forName: NSValueTransformerName(rawValue: name)) {
-                    let value = transformer.transformedValue(coreDataValue)
-                    object.setValue(value, forKey: key)
-                } else if let unarchivedObject = NSKeyedUnarchiver.unarchiveObject(with: data) {
-                    object.setValue(unarchivedObject, forKey: key)
+            if let coreDataValue = try? ckAttribute.makeCoreDataValue() {
+                if let cdAttribute = object.entity.attributesByName[key], cdAttribute.attributeType == .transformableAttributeType,
+                    let data = coreDataValue as? Data {
+                    if let name = cdAttribute.valueTransformerName, let transformer = ValueTransformer(forName: NSValueTransformerName(rawValue: name)) {
+                        let value = transformer.transformedValue(coreDataValue)
+                        object.setValue(value, forKey: key)
+                    } else if let unarchivedObject = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSObject.classForKeyedUnarchiver()], from: data) {
+                        object.setValue(unarchivedObject, forKey: key)
+                    } else {
+                        object.setValue(coreDataValue, forKey: key)
+                    }
                 } else {
-                    object.setValue(coreDataValue, forKey: key)
+                    if object.entity.attributesByName[key] != nil || object.entity.relationshipsByName[key] != nil {
+                        object.setValue(coreDataValue, forKey: key)
+                    }
+                    missingObjectsPerEntities[object] = ckAttribute.notFoundRecordNamesForAttribute
                 }
-            } else {
-                if object.entity.attributesByName[key] != nil || object.entity.relationshipsByName[key] != nil {
-                    object.setValue(coreDataValue, forKey: key)
-                }
-                missingObjectsPerEntities[object] = ckAttribute.notFoundRecordNamesForAttribute
             }
 		}
 		
 		// Set system headers
         object.setValue(record.recordID.recordName, forKey: serviceAttributeNames.recordName)
         object.setValue(record.recordID.zoneID.ownerName, forKey: serviceAttributeNames.ownerName)
-        if record.recordID.zoneID == CKRecordZone.default().zoneID {
+        if record.recordID.zoneID.zoneName == CKRecordZone.default().zoneID.zoneName {
             object.setValue(record.encdodedSystemFields, forKey: serviceAttributeNames.publicRecordData)
         } else {
             object.setValue(record.encdodedSystemFields, forKey: serviceAttributeNames.privateRecordData)

@@ -28,6 +28,11 @@ class SetupOperation: Operation {
     init(container: NSPersistentContainer, uploadAllData: Bool) {
 		self.container = container
         self.uploadAllData = uploadAllData
+        
+        super.init()
+        
+        name = "SetupOperation"
+        qualityOfService = .userInteractive
 	}
 	
 	private let queue = OperationQueue()
@@ -35,6 +40,16 @@ class SetupOperation: Operation {
 	override func main() {
 		super.main()
 		
+        #if TARGET_OS_IOS
+        let app = UIApplication.shared
+        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        defer {
+            app.endBackgroundTask(backgroundTaskID!)
+        }
+        #endif
+        
 		let childContext = container.newBackgroundContext()
         var operations: [Operation] = []
         
@@ -47,21 +62,17 @@ class SetupOperation: Operation {
 		operations.append(createZoneOperation)
         
 		// Subscribe operation
-		#if !os(watchOS)
 		let subscribeOperation = SubscribeOperation()
 		subscribeOperation.errorBlock = errorBlock
 		subscribeOperation.addDependency(createZoneOperation)
 		operations.append(subscribeOperation)
-		#endif
         
         if uploadAllData {
             // Upload all local data
             let uploadOperation = PushAllLocalDataOperation(parentContext: childContext, managedObjectModel: container.managedObjectModel)
             uploadOperation.errorBlock = errorBlock
             
-            #if !os(watchOS)
             uploadOperation.addDependency(subscribeOperation)
-            #endif
             operations.append(uploadOperation)
         }
         

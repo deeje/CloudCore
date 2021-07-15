@@ -46,10 +46,12 @@ class PushOperationQueue: OperationQueue {
 	
     private func addOperation(recordsToSave: [CKRecord], recordIDsToDelete: [CKRecord.ID], database: CKDatabase) {
 		// Modify CKRecord Operation
-		let modifyOperation = CKModifyRecordsOperation(recordsToSave: recordsToSave, recordIDsToDelete: recordIDsToDelete)
-		modifyOperation.savePolicy = .changedKeys
-		
-		modifyOperation.perRecordCompletionBlock = { record, error in
+		let modifyRecords = CKModifyRecordsOperation(recordsToSave: recordsToSave, recordIDsToDelete: recordIDsToDelete)
+        modifyRecords.database = database
+		modifyRecords.savePolicy = .changedKeys
+        modifyRecords.qualityOfService = .userInteractive
+        
+		modifyRecords.perRecordCompletionBlock = { record, error in
 			if let error = error {
 				self.errorBlock?(error)
 			} else {
@@ -57,15 +59,16 @@ class PushOperationQueue: OperationQueue {
 			}
 		}
 		
-		modifyOperation.modifyRecordsCompletionBlock = { _, _, error in
+		modifyRecords.modifyRecordsCompletionBlock = { _, _, error in
 			if let error = error {
 				self.errorBlock?(error)
 			}
 		}
-		        
-		modifyOperation.database = database
-
-		self.addOperation(modifyOperation)
+                
+        let finish = BlockOperation { }
+        finish.addDependency(modifyRecords)
+        database.add(modifyRecords)
+		self.addOperation(finish)
 	}
 	
 	/// Remove locally cached assets prepared for uploading at CloudKit
@@ -77,7 +80,7 @@ class PushOperationQueue: OperationQueue {
             }
 		}
 	}
-
+    
 }
 
 fileprivate class DatabaseModifyDataSource {

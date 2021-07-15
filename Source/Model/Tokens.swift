@@ -17,16 +17,22 @@ import CloudKit
 	* tokens per record inside *Record Data* attribute, it is managed automatically you don't need to take any actions about that token
 */
 
-open class Tokens: NSObject, NSCoding {
+open class Tokens: NSObject, NSSecureCoding {
 	
-    var tokensByDatabaseScope = [Int: CKServerChangeToken]()
-    var tokensByRecordZoneID = [CKRecordZone.ID: CKServerChangeToken]()
+    private var tokensByDatabaseScope = [Int: CKServerChangeToken]()
+    private var tokensByRecordZoneID = [CKRecordZone.ID: CKServerChangeToken]()
 	
 	private struct ArchiverKey {
         static let tokensByDatabaseScope = "tokensByDatabaseScope"
         static let tokensByRecordZoneID = "tokensByRecordZoneID"
 	}
 	
+    private let queue = DispatchQueue(label: "com.deeje.CloudCore.Tokens")
+    
+    public static var supportsSecureCoding: Bool {
+        return true
+    }
+    
 	/// Create fresh object without any Tokens inside. Can be used to fetch full data.
 	public override init() {
 		super.init()
@@ -38,19 +44,30 @@ open class Tokens: NSObject, NSCoding {
 	///
 	/// - Returns: previously saved `Token` object, if tokens weren't saved before newly initialized `Tokens` object will be returned
 	public static func loadFromUserDefaults() -> Tokens {
-		guard let tokensData = UserDefaults.standard.data(forKey: CloudCore.config.userDefaultsKeyTokens),
-			let tokens = NSKeyedUnarchiver.unarchiveObject(with: tokensData) as? Tokens else {
-				return Tokens()
+        if let tokensData = UserDefaults.standard.data(forKey: CloudCore.config.userDefaultsKeyTokens) {
+            do {
+                let allowableClasses = [Tokens.classForKeyedUnarchiver(),
+                                        NSNumber.classForKeyedUnarchiver(),
+                                        NSDictionary.classForKeyedUnarchiver(),
+                                        CKRecordZone.ID.classForKeyedUnarchiver(),
+                                        CKServerChangeToken.classForKeyedUnarchiver()]
+                let tokens = try NSKeyedUnarchiver.unarchivedObject(ofClasses: allowableClasses, from: tokensData) as! Tokens
+                
+                return tokens
+            } catch {
+//                print("\(error)")
+            }
 		}
 		
-		return tokens
+        return Tokens()
 	}
 	
 	/// Save tokens to UserDefaults and synchronize. Key is used from `CloudCoreConfig.userDefaultsKeyTokens`
 	open func saveToUserDefaults() {
-		let tokensData = NSKeyedArchiver.archivedData(withRootObject: self)
-		UserDefaults.standard.set(tokensData, forKey: CloudCore.config.userDefaultsKeyTokens)
-		UserDefaults.standard.synchronize()
+        if let tokensData = try? NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true) {
+            UserDefaults.standard.set(tokensData, forKey: CloudCore.config.userDefaultsKeyTokens)
+            UserDefaults.standard.synchronize()
+        }
 	}
 	
 	// MARK: NSCoding
@@ -71,4 +88,20 @@ open class Tokens: NSObject, NSCoding {
         aCoder.encode(tokensByRecordZoneID, forKey: ArchiverKey.tokensByRecordZoneID)
 	}
 	
+    func token(for scope: CKDatabase.Scope) -> CKServerChangeToken? {
+        return queue.sync { tokensByDatabaseScope[scope.rawValue] }
+    }
+    
+    func setToken(_ newToken: CKServerChangeToken?, for scope: CKDatabase.Scope) {
+        queue.sync { tokensByDatabaseScope[scope.rawValue] = newToken }
+    }
+    
+    func token(for zone: CKRecordZone.ID) -> CKServerChangeToken? {
+        return queue.sync { tokensByRecordZoneID[zone] }
+    }
+    
+    func setToken(_ newToken: CKServerChangeToken?, for zone: CKRecordZone.ID) {
+        queue.sync { tokensByRecordZoneID[zone] = newToken }
+    }
+    
 }

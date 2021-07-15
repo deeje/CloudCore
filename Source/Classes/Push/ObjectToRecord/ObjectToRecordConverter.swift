@@ -81,11 +81,11 @@ class ObjectToRecordConverter {
                         self?.errorBlock?(error)
                     }
                     
+                    let targetScope = targetScope(for: scope, and: object)
+                    let cloudDatabase = database(for: targetScope)
                     convertOperation.conversionCompletionBlock = { [weak self] record in
                         guard let me = self else { return }
                         
-                        let targetScope = me.targetScope(for: scope, and: object)
-                        let cloudDatabase = me.database(for: targetScope)
                         let recordWithDB = RecordWithDatabase(record, cloudDatabase)
                         me.convertedRecords.append(recordWithDB)
                     }
