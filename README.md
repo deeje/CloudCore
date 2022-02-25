@@ -64,6 +64,7 @@ In Xcode, go to File > Swift Packages > Add Package Dependency, and add the foll
 ```
 https://github.com/deeje/CloudCore
 ```
+When prompted to for a version, select "Branch", and then choose "master"
 
 ### CocoaPods
 **CloudCore** is also available through [CocoaPods](http://cocoapods.org). To install
