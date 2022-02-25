@@ -61,7 +61,9 @@ CloudCore is built using a "black box" architecture, so it works invisibly for y
 
 In Xcode, go to File > Swift Packages > Add Package Dependency, and add the following URL:
 
-`https://github.com/jkaunert/CloudCore`
+```
+https://github.com/deeje/CloudCore
+```
 
 ### CocoaPods
 **CloudCore** is also available through [CocoaPods](http://cocoapods.org). To install
