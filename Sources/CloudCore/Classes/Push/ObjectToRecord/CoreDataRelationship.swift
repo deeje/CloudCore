@@ -65,7 +65,7 @@ class CoreDataRelationship {
 	}
 	
     private func makeReference(from managedObject: NSManagedObject) throws -> CKRecord.Reference? {
-        let action: CKRecord_Reference_Action
+        let action: CKRecord.ReferenceAction
 		if case .some(NSDeleteRule.cascadeDeleteRule) = description.inverseRelationship?.deleteRule {
 			action = .deleteSelf
 		} else {
