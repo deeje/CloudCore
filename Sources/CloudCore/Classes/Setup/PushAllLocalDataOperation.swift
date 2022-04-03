@@ -31,7 +31,7 @@ class PushAllLocalDataOperation: Operation {
         super.init()
         
         name = "PushAllLocalDataOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
 	}
 	
 	override func main() {

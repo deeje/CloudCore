@@ -36,6 +36,10 @@ extension UIViewController {
                     title = "iCloud Restricted"
                     message = "You'll need permissions changed on your iCloud account"
                     
+                case .temporarilyUnavailable:
+                    title = "iCloud Temporarily Unavailable"
+                    message = "Could not determine the status of your iCloud account"
+                
                 @unknown default:
                     break
                 }

@@ -20,7 +20,7 @@ class FetchPublicSubscriptionsOperation: AsynchronousOperation {
         super.init()
         
         name = "FetchPublicSubscriptionsOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
     }
     
     override func main() {

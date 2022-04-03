@@ -18,7 +18,7 @@ class CreateCloudCoreZoneOperation: AsynchronousOperation {
         super.init()
         
         name = "CreateCloudCoreZoneOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
     }
     
 	override func main() {
@@ -26,6 +26,7 @@ class CreateCloudCoreZoneOperation: AsynchronousOperation {
 
 		let cloudCoreZone = CKRecordZone(zoneName: CloudCore.config.zoneName)
 		let recordZoneOperation = CKModifyRecordZonesOperation(recordZonesToSave: [cloudCoreZone], recordZoneIDsToDelete: nil)
+        recordZoneOperation.qualityOfService = .userInitiated
 		recordZoneOperation.modifyRecordZonesCompletionBlock = {
 			if let error = $2 {
 				self.errorBlock?(error)

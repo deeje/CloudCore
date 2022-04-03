@@ -1,8 +1,10 @@
 # CloudCore
 
-![Platform](https://img.shields.io/cocoapods/p/CloudCore.svg?style=flat)
+![SwiftPM compatible](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg)
+![CocoaPods compatible](https://img.shields.io/badge/CocoaPods-compatible-brightgreen.svg)
 ![Status](https://img.shields.io/badge/status-beta-orange.svg)
-![Swift](https://img.shields.io/badge/swift-5.0-orange.svg)
+![Swift](https://img.shields.io/badge/swift-5.1-orange.svg)
+![Platforms](https://img.shields.io/cocoapods/p/CloudCore.svg?style=flat)
 
 **CloudCore** is a framework that manages syncing between iCloud (CloudKit) and Core Data written on native Swift.
 
@@ -55,9 +57,17 @@ CloudCore is built using a "black box" architecture, so it works invisibly for y
 5. By leveraging NSPersistentHistory, changes can be queued when offline and pushed when online.
 
 ## Installation
+### Swift Package Manager (Recommended)
+
+In Xcode, go to File > Swift Packages > Add Package Dependency, and add the following URL:
+
+```
+https://github.com/deeje/CloudCore
+```
+When prompted to for a version, select "Branch", and then choose "master"
 
 ### CocoaPods
-**CloudCore** is available through [CocoaPods](http://cocoapods.org). To install
+**CloudCore** is also available through [CocoaPods](http://cocoapods.org). To install
 it, simply add the following line to your Podfile:
 
 ```ruby
@@ -181,7 +191,7 @@ CloudCore now has built-in support for CloudKit Sharing.  There are several addi
 func windowScene(_ windowScene: UIWindowScene, 
 				 userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
   let acceptShareOperation = CKAcceptSharesOperation(shareMetadatas: [cloudKitShareMetadata])
-  acceptShareOperation.qualityOfService = .userInteractive
+  acceptShareOperation.qualityOfService = .userInitiated
   acceptShareOperation.perShareCompletionBlock = { meta, share, error in
     CloudCore.pull(rootRecordID: meta.rootRecordID, container: self.persistentContainer, error: nil) { }
   }
@@ -198,7 +208,7 @@ OR
 func application(_ application: UIApplication,
                  userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
   let acceptShareOperation = CKAcceptSharesOperation(shareMetadatas: [cloudKitShareMetadata])
-  acceptShareOperation.qualityOfService = .userInteractive
+  acceptShareOperation.qualityOfService = .userInitiated
   acceptShareOperation.perShareCompletionBlock = { meta, share, error in
     CloudCore.pull(rootRecordID: meta.rootRecordID, container: self.persistentContainer, error: nil) { }
   }
@@ -262,3 +272,6 @@ Open for hire / relocation.
 
 Oleg Müller
 - added full support for CoreData relationships
+
+Joshua Kaunert
+- added support for Swift Package Manager

@@ -63,7 +63,7 @@ public class PullRecordOperation: PullOperation {
     private func addFetchRecordsOp(recordIDs: [CKRecord.ID], backgroundContext: NSManagedObjectContext) {
         let fetchRecords = CKFetchRecordsOperation(recordIDs: recordIDs)
         fetchRecords.database = database
-        fetchRecords.qualityOfService = .userInteractive
+        fetchRecords.qualityOfService = .userInitiated
         fetchRecords.perRecordCompletionBlock = { record, recordID, error in
             if let record = record {
                 self.fetchedRecordIDs.append(recordID!)

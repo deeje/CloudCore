@@ -65,7 +65,7 @@ public class PullChangesOperation: PullOperation {
                 let changedRecordIDs: NSMutableSet = []
                 let deletedRecordIDs: NSMutableSet = []
                 let fetchNotificationChanges = CKFetchNotificationChangesOperation(previousServerChangeToken: databaseChangeToken)
-                fetchNotificationChanges.qualityOfService = .userInteractive
+                fetchNotificationChanges.qualityOfService = .userInitiated
                 fetchNotificationChanges.notificationChangedBlock = { innerNotification in
                     if let innerQueryNotification = innerNotification as? CKQueryNotification {
                         if innerQueryNotification.queryNotificationReason == .recordDeleted {
@@ -80,7 +80,7 @@ public class PullChangesOperation: PullOperation {
                     let allChangedRecordIDs = changedRecordIDs.allObjects as! [CKRecord.ID]
                     let fetchRecords = CKFetchRecordsOperation(recordIDs: allChangedRecordIDs)
                     fetchRecords.database = CloudCore.config.container.publicCloudDatabase
-                    fetchRecords.qualityOfService = .userInteractive
+                    fetchRecords.qualityOfService = .userInitiated
                     fetchRecords.perRecordCompletionBlock = { record, recordID, error in
                         if error == nil {
                             self.addConvertRecordOperation(record: record!, context: backgroundContext)
@@ -111,7 +111,7 @@ public class PullChangesOperation: PullOperation {
                 
                 let fetchDatabaseChanges = CKFetchDatabaseChangesOperation(previousServerChangeToken: databaseChangeToken)
                 fetchDatabaseChanges.database = database
-                fetchDatabaseChanges.qualityOfService = .userInteractive
+                fetchDatabaseChanges.qualityOfService = .userInitiated
                 fetchDatabaseChanges.recordZoneWithIDChangedBlock = { recordZoneID in
                     changedZoneIDs.append(recordZoneID)
                 }
@@ -173,7 +173,7 @@ public class PullChangesOperation: PullOperation {
 		if recordZoneIDs.isEmpty { return }
 		
 		let recordZoneChangesOperation = FetchRecordZoneChangesOperation(from: database, recordZoneIDs: recordZoneIDs, tokens: tokens)
-        recordZoneChangesOperation.qualityOfService = .userInteractive
+        recordZoneChangesOperation.qualityOfService = .userInitiated
 		recordZoneChangesOperation.recordChangedBlock = {
             self.addConvertRecordOperation(record: $0, context: context)
 		}

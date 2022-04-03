@@ -32,7 +32,7 @@ class SetupOperation: Operation {
         super.init()
         
         name = "SetupOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
 	}
 	
 	private let queue = OperationQueue()

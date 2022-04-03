@@ -19,7 +19,7 @@ class SubscribeOperation: AsynchronousOperation {
         super.init()
         
         name = "SubscribeOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
     }
     
 	override func main() {
@@ -75,7 +75,7 @@ class SubscribeOperation: AsynchronousOperation {
 			}
 		}
 		
-        modifySubscriptions.qualityOfService = .userInteractive
+        modifySubscriptions.qualityOfService = .userInitiated
 		
 		return modifySubscriptions
 	}
@@ -89,7 +89,7 @@ class SubscribeOperation: AsynchronousOperation {
 				operationToCancel.cancel()
 			}
 		}
-        fetchSubscriptions.qualityOfService = .userInteractive
+        fetchSubscriptions.qualityOfService = .userInitiated
         
 		return fetchSubscriptions
 	}

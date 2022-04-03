@@ -38,7 +38,7 @@ class FetchRecordZoneChangesOperation: Operation {
 		super.init()
 		
         name = "FetchRecordZoneChangesOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
 	}
 	
 	override func main() {
@@ -90,7 +90,7 @@ class FetchRecordZoneChangesOperation: Operation {
 		}
 		
         fetchRecordZoneChanges.database = self.database
-        fetchRecordZoneChanges.qualityOfService = .userInteractive
+        fetchRecordZoneChanges.qualityOfService = .userInitiated
 
 		return fetchRecordZoneChanges
 	}

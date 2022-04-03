@@ -24,7 +24,7 @@ public class PullOperation: Operation {
         
         super.init()
         
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
         
         queue.name = "PullQueue"
         queue.maxConcurrentOperationCount = 1

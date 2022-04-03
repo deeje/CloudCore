@@ -49,7 +49,7 @@ class PushOperationQueue: OperationQueue {
 		let modifyRecords = CKModifyRecordsOperation(recordsToSave: recordsToSave, recordIDsToDelete: recordIDsToDelete)
         modifyRecords.database = database
 		modifyRecords.savePolicy = .changedKeys
-        modifyRecords.qualityOfService = .userInteractive
+        modifyRecords.qualityOfService = .userInitiated
         
 		modifyRecords.perRecordCompletionBlock = { record, error in
 			if let error = error {

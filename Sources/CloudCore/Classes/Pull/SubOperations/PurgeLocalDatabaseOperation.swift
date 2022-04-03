@@ -21,7 +21,7 @@ class PurgeLocalDatabaseOperation: Operation {
 		super.init()
         
         name = "PurgeLocalDatabaseOperation"
-        qualityOfService = .userInteractive
+        qualityOfService = .userInitiated
 	}
 	
 	override func main() {
