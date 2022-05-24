@@ -90,8 +90,9 @@ open class CloudCore {
 	/// Enable CloudKit and Core Data synchronization
 	///
 	/// - Parameters:
-	///   - container: `NSPersistentContainer` that will be used to save data
-	public static func enable(persistentContainer container: NSPersistentContainer) {
+    ///   - container: `NSPersistentContainer` that will be used to save data
+    ///   - withPull: `Bool` to specify if Pull shoul dbe perfromed or not on enable
+    public static func enable(persistentContainer container: NSPersistentContainer, withPull: Bool) {
 		// Listen for local changes
 		let observer = CoreDataObserver(container: container)
 		observer.delegate = self.delegate
@@ -106,6 +107,10 @@ open class CloudCore {
             handle(subscriptionError: $0, container: container)
         }
 		
+        if !withPull {
+        	return
+        }
+        
 		// Fetch updated data (e.g. push notifications weren't received)
         let pullOperation = PullChangesOperation(persistentContainer: container)
 		pullOperation.errorBlock = {
@@ -121,6 +126,10 @@ open class CloudCore {
             }
         }
 	}
+    
+    public static func enable(persistentContainer container: NSPersistentContainer) {
+        self.enable(persistentContainer: container, withPull: true)
+    }
 	
 	/// Disables synchronization (push notifications won't be sent also)
 	public static func disable() {
