@@ -30,7 +30,7 @@ public class PublicDatabaseSubscriptions {
     
     
     private static func lastSync(for subscriptionID: String) -> NSDate? {
-        var lastDates: [String: NSDate]? = UserDefaults.standard.object(forKey: lastSyncDatesKey) as? Dictionary
+        let lastDates: [String: NSDate]? = UserDefaults.standard.object(forKey: lastSyncDatesKey) as? Dictionary
         
         return lastDates?[subscriptionID]
     }
