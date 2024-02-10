@@ -14,7 +14,7 @@ public class PullChangesOperation: PullOperation {
 	
 	/// Private cloud database for the CKContainer specified by CloudCoreConfig
 	public static let allDatabases = [
-		CloudCore.config.container.publicCloudDatabase,
+//		CloudCore.config.container.publicCloudDatabase,
 		CloudCore.config.container.privateCloudDatabase,
 		CloudCore.config.container.sharedCloudDatabase
 	]
@@ -63,35 +63,7 @@ public class PullChangesOperation: PullOperation {
             let databaseChangeToken = tokens.token(for: database.databaseScope)
             
             if database.databaseScope == .public {
-                let changedRecordIDs: NSMutableSet = []
-                let deletedRecordIDs: NSMutableSet = []
-                let fetchNotificationChanges = CKFetchNotificationChangesOperation(previousServerChangeToken: databaseChangeToken)
-                fetchNotificationChanges.qualityOfService = .userInitiated
-                fetchNotificationChanges.notificationChangedBlock = { innerNotification in
-                    if let innerQueryNotification = innerNotification as? CKQueryNotification {
-                        if innerQueryNotification.queryNotificationReason == .recordDeleted {
-                            deletedRecordIDs.add(innerQueryNotification.recordID!)
-                            changedRecordIDs.remove(innerQueryNotification.recordID!)
-                        } else {
-                            changedRecordIDs.add(innerQueryNotification.recordID!)
-                        }
-                    }
-                }
-                fetchNotificationChanges.fetchNotificationChangesCompletionBlock = { changeToken, error in
-                    let allChangedRecordIDs = changedRecordIDs.allObjects as! [CKRecord.ID]
-                    self.addFetchRecordsOp(recordIDs: allChangedRecordIDs, database: database, backgroundContext: backgroundContext)
-                    
-                    let allDeletedRecordIDs = deletedRecordIDs.allObjects as! [CKRecord.ID]
-                    for recordID in allDeletedRecordIDs {
-                        self.addDeleteRecordOperation(recordID: recordID, context: backgroundContext)
-                    }
-                    
-                    self.tokens.setToken(changeToken, for: database.databaseScope)
-                }
-                let finished = BlockOperation { }
-                finished.addDependency(fetchNotificationChanges)
-                CloudCore.config.container.add(fetchNotificationChanges)
-                queue.addOperation(finished)
+                PublicDatabaseSubscriptions.pull(into: persistentContainer)
             } else {
                 var changedZoneIDs = [CKRecordZone.ID]()
                 var deletedZoneIDs = [CKRecordZone.ID]()
