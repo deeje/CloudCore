@@ -13,10 +13,9 @@ import CoreData
 public class PullChangesOperation: PullOperation {
 	
 	/// Private cloud database for the CKContainer specified by CloudCoreConfig
-	public static let allDatabases = [
-//		CloudCore.config.container.publicCloudDatabase,
+	public static let notPublicDatabases = [
 		CloudCore.config.container.privateCloudDatabase,
-		CloudCore.config.container.sharedCloudDatabase
+		CloudCore.config.container.sharedCloudDatabase,
 	]
     
 	private let databases: [CKDatabase]
@@ -28,7 +27,7 @@ public class PullChangesOperation: PullOperation {
 	///   - databases: list of databases to fetch data from (only private is supported now)
 	///   - persistentContainer: `NSPersistentContainer` that will be used to save data
 	///   - tokens: previously saved `Tokens`, you can generate new ones if you want to fetch all data
-	public init(from databases: [CKDatabase] = PullChangesOperation.allDatabases,
+	public init(from databases: [CKDatabase] = PullChangesOperation.notPublicDatabases,
                 persistentContainer: NSPersistentContainer,
                 tokens: Tokens = CloudCore.tokens) {
 		self.databases = databases
@@ -53,20 +52,18 @@ public class PullChangesOperation: PullOperation {
         }
         #endif
         
-        databases.forEach { database in
-            CloudCore.delegate?.willSyncFromCloud(scope:database.databaseScope)
-        }
-		
-		let backgroundContext = persistentContainer.newBackgroundContext()
-		backgroundContext.name = CloudCore.config.pullContextName
-        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        
         for database in databases {
-            let databaseChangeToken = tokens.token(for: database.databaseScope)
-            
             if database.databaseScope == .public {
                 PublicDatabaseSubscriptions.pull(into: persistentContainer)
             } else {
+                CloudCore.delegate?.willSyncFromCloud(scope:database.databaseScope)
+                
+                let databaseChangeToken = tokens.token(for: database.databaseScope)
+                
+                let backgroundContext = persistentContainer.newBackgroundContext()
+                backgroundContext.name = CloudCore.config.pullContextName
+                backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                
                 var changedZoneIDs = [CKRecordZone.ID]()
                 var deletedZoneIDs = [CKRecordZone.ID]()
                 
@@ -111,25 +108,23 @@ public class PullChangesOperation: PullOperation {
                 finished.addDependency(fetchDatabaseChanges)
                 database.add(fetchDatabaseChanges)
                 queue.addOperation(finished)
+                
+                queue.waitUntilAllOperationsAreFinished()
+                
+                processMissingReferences(context: backgroundContext)
+                
+                backgroundContext.performAndWait {
+                    do {
+                        try backgroundContext.save()
+                    } catch {
+                        errorBlock?(error)
+                    }
+                }
+                
+                tokens.saveToUserDefaults()
+                
+                CloudCore.delegate?.didSyncFromCloud(scope: database.databaseScope)
             }
-        }
-        
-		queue.waitUntilAllOperationsAreFinished()
-        
-        processMissingReferences(context: backgroundContext)
-        
-        backgroundContext.performAndWait {
-            do {
-                try backgroundContext.save()
-            } catch {
-                errorBlock?(error)
-            }
-        }
-		
-        tokens.saveToUserDefaults()
-        
-        databases.forEach { database in
-            CloudCore.delegate?.didSyncFromCloud(scope: database.databaseScope)
         }
 	}
     
