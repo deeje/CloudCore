@@ -117,6 +117,7 @@ public class PullOperation: Operation {
                     }
                 }
             }
+            objectsWithMissingReferences.removeAll()
         }
     }
     
