@@ -175,11 +175,18 @@ public class PublicDatabaseSubscriptions {
     }
     
     static public func pull(into persistentContainer: NSPersistentContainer) {
+        CloudCore.delegate?.willSyncFromCloud(scope: .public)
+        
         for subscription in subscriptions {
             guard let querySubscription = subscription as? CKQuerySubscription else { continue }
             
             pullPublic(querySubscription, into: persistentContainer)
         }
+        
+        let completionOp = BlockOperation {
+            CloudCore.delegate?.didSyncFromCloud(scope: .public)
+        }
+        pullQueue.addOperation(completionOp)
     }
     
 }

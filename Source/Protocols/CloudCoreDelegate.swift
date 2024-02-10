@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import CloudKit
 
 /// Delegate for framework that can be used for proccesses tracking and error handling.
 /// Maybe usefull to activate `UIApplication.networkActivityIndicatorVisible`.
@@ -16,10 +17,10 @@ public protocol CloudCoreDelegate: AnyObject {
 	// MARK: Notifications
 	
 	/// Tells the delegate that fetching data from CloudKit is about to begin
-	func willSyncFromCloud()
+    func willSyncFromCloud(scope: CKDatabase.Scope)
 	
 	/// Tells the delegate that data fetching from CloudKit and updating local objects processes are now completed
-	func didSyncFromCloud()
+	func didSyncFromCloud(scope: CKDatabase.Scope)
 	
 	/// Tells the delegate that conversion operations (NSManagedObject to CKRecord) and data uploading to CloudKit is about to begin
 	func willSyncToCloud()
@@ -40,8 +41,8 @@ public protocol CloudCoreDelegate: AnyObject {
 
 public extension CloudCoreDelegate {
 	
-	func willSyncFromCloud() { }
-	func didSyncFromCloud() { }
+	func willSyncFromCloud(scope: CKDatabase.Scope) { }
+	func didSyncFromCloud(scope: CKDatabase.Scope) { }
 	func willSyncToCloud() { }
 	func didSyncToCloud() { }
 	func error(error: Error, module: Module?) { }

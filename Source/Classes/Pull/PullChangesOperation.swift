@@ -53,7 +53,9 @@ public class PullChangesOperation: PullOperation {
         }
         #endif
         
-		CloudCore.delegate?.willSyncFromCloud()
+        databases.forEach { database in
+            CloudCore.delegate?.willSyncFromCloud(scope:database.databaseScope)
+        }
 		
 		let backgroundContext = persistentContainer.newBackgroundContext()
 		backgroundContext.name = CloudCore.config.pullContextName
@@ -126,7 +128,9 @@ public class PullChangesOperation: PullOperation {
 		
         tokens.saveToUserDefaults()
         
-		CloudCore.delegate?.didSyncFromCloud()
+        databases.forEach { database in
+            CloudCore.delegate?.didSyncFromCloud(scope: database.databaseScope)
+        }
 	}
     
     private func addDeleteRecordOperation(recordID: CKRecord.ID, context: NSManagedObjectContext) {

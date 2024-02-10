@@ -36,7 +36,7 @@ public class PullRecordOperation: PullOperation {
         }
         #endif
         
-        CloudCore.delegate?.willSyncFromCloud()
+        CloudCore.delegate?.willSyncFromCloud(scope: database.databaseScope)
         
         let backgroundContext = persistentContainer.newBackgroundContext()
         backgroundContext.name = CloudCore.config.pullContextName
@@ -55,7 +55,7 @@ public class PullRecordOperation: PullOperation {
             }
         }
                 
-        CloudCore.delegate?.didSyncFromCloud()
+        CloudCore.delegate?.didSyncFromCloud(scope: database.databaseScope)
     }
         
 }
