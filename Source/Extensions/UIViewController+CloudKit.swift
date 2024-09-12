@@ -22,8 +22,8 @@ extension UIViewController {
                 
                 switch accountStatus {
                 case .noAccount:
-                    title = "Sign in to iCloud and\nenable iCloud Drive"
-                    message = "Go to Settings and sign into your iPhone. Under iCloud, enable iCloud Drive."
+                    title = "Sign into iCloud."
+                    message = "Go to Settings and sign into your iCloud account."
                     
                 case .available:
                     available = true
