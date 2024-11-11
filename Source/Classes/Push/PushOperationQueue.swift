@@ -9,7 +9,7 @@
 import CloudKit
 import CoreData
 
-class PushOperationQueue: OperationQueue {
+class PushOperationQueue: OperationQueue, @unchecked Sendable {
 	var errorBlock: ErrorBlock?
 	
 	/// Modify CloudKit database, operations will be created and added to operation queue.

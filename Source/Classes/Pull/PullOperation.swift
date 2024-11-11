@@ -8,7 +8,7 @@
 import CloudKit
 import CoreData
 
-public class PullOperation: Operation {
+public class PullOperation: Operation, @unchecked Sendable {
     
     internal let persistentContainer: NSPersistentContainer
     
@@ -70,7 +70,9 @@ public class PullOperation: Operation {
     internal func addConvertRecordOperation(record: CKRecord, context: NSManagedObjectContext) {
         // Convert and write CKRecord To NSManagedObject Operation
         let convertOperation = RecordToCoreDataOperation(parentContext: context, record: record)
-        convertOperation.errorBlock = { self.errorBlock?($0) }
+        convertOperation.errorBlock = {
+            self.errorBlock?($0)
+        }
         convertOperation.completionBlock = {
             context.performAndWait {
                 self.objectsWithMissingReferences.append(convertOperation.missingObjectsPerEntities)

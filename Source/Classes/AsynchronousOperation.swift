@@ -12,7 +12,7 @@ import Foundation
 /// ## How to use:
 /// 1. Call `super.main()` when override `main` method, call `super.start()` when override `start` method.
 /// 2. When operation is finished or cancelled set `self.state = .finished`
-public class AsynchronousOperation: Operation {
+public class AsynchronousOperation: Operation, @unchecked Sendable {
 	open override var isAsynchronous: Bool { return true }
 	open override var isExecuting: Bool { return state == .executing }
 	open override var isFinished: Bool { return state == .finished }

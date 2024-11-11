@@ -8,7 +8,7 @@
 
 import CloudKit
 
-class FetchRecordZoneChangesOperation: Operation {
+class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
 	// Set on init
 	let tokens: Tokens
 	let recordZoneIDs: [CKRecordZone.ID]

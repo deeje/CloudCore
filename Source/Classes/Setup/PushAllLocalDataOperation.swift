@@ -9,7 +9,7 @@
 import Foundation
 import CoreData
 
-class PushAllLocalDataOperation: Operation {
+class PushAllLocalDataOperation: Operation, @unchecked Sendable {
 	
 	let managedObjectModel: NSManagedObjectModel
 	let parentContext: NSManagedObjectContext

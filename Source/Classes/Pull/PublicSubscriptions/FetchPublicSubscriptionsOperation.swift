@@ -10,7 +10,7 @@ import CloudKit
 
 /// Fetch CloudCore's subscriptions from Public CKDatabase
 
-class FetchPublicSubscriptionsOperation: AsynchronousOperation {
+class FetchPublicSubscriptionsOperation: AsynchronousOperation, @unchecked Sendable {
     var errorBlock: ErrorBlock?
     var fetchCompletionBlock: (([CKSubscription]) -> Void)?
     

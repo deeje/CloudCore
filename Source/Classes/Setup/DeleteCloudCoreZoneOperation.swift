@@ -8,7 +8,7 @@
 import Foundation
 import CloudKit
 
-class DeleteCloudCoreZoneOperation: AsynchronousOperation {
+class DeleteCloudCoreZoneOperation: AsynchronousOperation, @unchecked Sendable {
     
     var errorBlock: ErrorBlock?
     private var deleteZoneOperation: CKModifyRecordZonesOperation?

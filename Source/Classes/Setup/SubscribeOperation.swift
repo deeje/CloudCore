@@ -9,7 +9,7 @@
 import Foundation
 import CloudKit
 
-class SubscribeOperation: AsynchronousOperation {
+class SubscribeOperation: AsynchronousOperation, @unchecked Sendable {
 	
 	var errorBlock: ErrorBlock?
 	

@@ -9,7 +9,7 @@ import CloudKit
 import CoreData
 
 /// An operation that fetches data from CloudKit for one record and all its child records, and saves it to Core Data
-public class PullRecordOperation: PullOperation {
+public class PullRecordOperation: PullOperation, @unchecked Sendable {
     
     let rootRecordID: CKRecord.ID
     let database: CKDatabase

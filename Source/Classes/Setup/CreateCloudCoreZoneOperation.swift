@@ -9,7 +9,7 @@
 import Foundation
 import CloudKit
 
-class CreateCloudCoreZoneOperation: AsynchronousOperation {
+class CreateCloudCoreZoneOperation: AsynchronousOperation, @unchecked Sendable {
 	
 	var errorBlock: ErrorBlock?
 	private var createZoneOperation: CKModifyRecordZonesOperation?

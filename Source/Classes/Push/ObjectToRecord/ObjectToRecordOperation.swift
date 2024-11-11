@@ -9,7 +9,7 @@
 import CloudKit
 import CoreData
 
-class ObjectToRecordOperation: Operation {
+class ObjectToRecordOperation: Operation, @unchecked Sendable {
 	var managedObjectContext: NSManagedObjectContext?
 	
 	// Set on init

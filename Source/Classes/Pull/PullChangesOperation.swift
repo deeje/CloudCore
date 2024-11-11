@@ -10,7 +10,7 @@ import CloudKit
 import CoreData
 
 /// An operation that fetches data from CloudKit and saves it to Core Data, you can use it without calling `CloudCore.pull` methods if you application relies on `Operation`
-public class PullChangesOperation: PullOperation {
+public class PullChangesOperation: PullOperation, @unchecked Sendable {
 	
 	/// Private cloud database for the CKContainer specified by CloudCoreConfig
 	public static let notPublicDatabases = [
@@ -131,7 +131,9 @@ public class PullChangesOperation: PullOperation {
     private func addDeleteRecordOperation(recordID: CKRecord.ID, context: NSManagedObjectContext) {
         // Delete NSManagedObject with specified recordID Operation
         let deleteOperation = DeleteFromCoreDataOperation(parentContext: context, recordID: recordID)
-        deleteOperation.errorBlock = { self.errorBlock?($0) }
+        deleteOperation.errorBlock = {
+            self.errorBlock?($0)
+        }
         queue.addOperation(deleteOperation)
     }
     

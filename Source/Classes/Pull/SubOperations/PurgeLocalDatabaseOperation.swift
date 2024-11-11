@@ -8,7 +8,7 @@
 
 import CoreData
 
-class PurgeLocalDatabaseOperation: Operation {
+class PurgeLocalDatabaseOperation: Operation, @unchecked Sendable {
 	
 	let parentContext: NSManagedObjectContext
 	let managedObjectModel: NSManagedObjectModel

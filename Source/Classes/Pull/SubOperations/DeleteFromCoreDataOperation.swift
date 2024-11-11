@@ -9,7 +9,7 @@
 import CoreData
 import CloudKit
 
-class DeleteFromCoreDataOperation: Operation {
+class DeleteFromCoreDataOperation: Operation, @unchecked Sendable {
 	let parentContext: NSManagedObjectContext
     let recordID: CKRecord.ID
 	var errorBlock: ErrorBlock?

@@ -16,7 +16,7 @@ import CoreData
 	2. Subscribe to that zone.
 	3. Upload all local data to cloud.
 */
-class SetupOperation: Operation {
+class SetupOperation: Operation, @unchecked Sendable {
 	
 	var errorBlock: ErrorBlock?
 	let container: NSPersistentContainer
