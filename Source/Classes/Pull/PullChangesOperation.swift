@@ -67,6 +67,10 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
                 var changedZoneIDs = [CKRecordZone.ID]()
                 var deletedZoneIDs = [CKRecordZone.ID]()
                 
+                // TODO: how should we handle these?
+                var purgedZoneIDs = [CKRecordZone.ID]()
+                var resetZoneIDs = [CKRecordZone.ID]()
+
                 let fetchDatabaseChanges = CKFetchDatabaseChangesOperation(previousServerChangeToken: databaseChangeToken)
                 fetchDatabaseChanges.database = database
                 fetchDatabaseChanges.qualityOfService = .userInitiated
@@ -74,7 +78,16 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
                     changedZoneIDs.append(recordZoneID)
                 }
                 fetchDatabaseChanges.recordZoneWithIDWasDeletedBlock = { recordZoneID in
-                    deletedZoneIDs.append(recordZoneID)
+                        // 2025-01 when the user's own zone is deleted, this will be handled elsewhere
+                    if recordZoneID.ownerName != CKCurrentUserDefaultName {
+                        deletedZoneIDs.append(recordZoneID)
+                    }
+                }
+                fetchDatabaseChanges.recordZoneWithIDWasPurgedBlock = { recordZoneID in
+                    purgedZoneIDs.append(recordZoneID)
+                }
+                fetchDatabaseChanges.recordZoneWithIDWasDeletedDueToUserEncryptedDataResetBlock = { recordZoneID in
+                    resetZoneIDs.append(recordZoneID)
                 }
                 fetchDatabaseChanges.fetchDatabaseChangesResultBlock = { result in
                     switch result {
@@ -216,7 +229,9 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
 		}
 		
 		switch cloudError.code {
-		// User purged cloud database, we need to delete local cache (according Apple Guidelines)
+            // User purged cloud database, we need to delete local cache (according Apple Guidelines)
+            // and yet, we don't call fetch zone changes because the databse doesn't return a zone change !&(#*$
+            // so this doesn't appear to get called
 		case .userDeletedZone:
 			queue.cancelAllOperations()
 			
