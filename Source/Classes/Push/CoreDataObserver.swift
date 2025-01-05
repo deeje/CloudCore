@@ -317,7 +317,7 @@ class CoreDataObserver {
             }
             
 		// Zone was accidentally deleted (NOT PURGED), we need to reupload all data accroding Apple Guidelines
-		case .zoneNotFound:
+        case .zoneNotFound:
 			pushOperationQueue.cancelAllOperations()
 			
             var resetZoneOperations: [Operation] = []
@@ -357,8 +357,17 @@ class CoreDataObserver {
             resetZoneOperations.append(uploadOperation)
             
 			pushOperationQueue.addOperations(resetZoneOperations, waitUntilFinished: true)
-		case .operationCancelled: return
-		default: delegate?.error(error: cloudError, module: .some(.pushToCloud))
+		case .operationCancelled:
+            return
+        case .userDeletedZone:
+            // 2025-01 if only CloudKit told me sooner .userDeletedZone, say during fetch changes, I could better handle this, but oh well
+            // go find all the other places where .userDeletedZone is handled but not called :-(
+            pushOperationQueue.cancelAllOperations()
+            
+            let setup = SetupOperation(container: self.persistentContainer, uploadAllData: true)
+            pushOperationQueue.addOperations([setup], waitUntilFinished: true)
+		default:
+            delegate?.error(error: cloudError, module: .some(.pushToCloud))
 		}
 	}
 

@@ -264,7 +264,8 @@ open class CloudCore {
 	}
 
 	static private func handle(subscriptionError: Error, container: NSPersistentContainer) {
-		guard let cloudError = subscriptionError as? CKError, let partialErrorValues = cloudError.partialErrorsByItemID?.values else {
+		guard let cloudError = subscriptionError as? CKError,
+              let partialErrorValues = cloudError.partialErrorsByItemID?.values else {
 			delegate?.error(error: subscriptionError, module: nil)
 			return
 		}
@@ -273,12 +274,18 @@ open class CloudCore {
 		for subError in partialErrorValues {
 			guard let subError = subError as? CKError else { continue }
 			
-			if case .zoneNotFound = subError.code {
-				// Zone wasn't found, we need to create it
-				self.queue.cancelAllOperations()
+            switch subError.code {
+            case .userDeletedZone:      // 2025-01 this doesn't appear to ever happen here :-(
+                self.queue.cancelAllOperations()
+                let setupOperation = SetupOperation(container: container, uploadAllData: true)
+                self.queue.addOperation(setupOperation)
+                
+            case .zoneNotFound:
+                // Zone wasn't found, we need to create it
+                self.queue.cancelAllOperations()
                 
                 let setupOperation = SetupOperation(container: container, uploadAllData: true)  // arg, why is this a question?!
-				
+                
                 // for completeness, pull again
                 let pullOperation = PullChangesOperation(persistentContainer: container)
                 pullOperation.errorBlock = {
@@ -287,9 +294,10 @@ open class CloudCore {
                 
                 self.queue.addOperation(setupOperation)
                 self.queue.addOperation(pullOperation)
-
-				return
-			}
+            default:
+                print("Unknown CK sub error: \(subError)")
+                break
+            }
 		}
 		
 		delegate?.error(error: subscriptionError, module: nil)
