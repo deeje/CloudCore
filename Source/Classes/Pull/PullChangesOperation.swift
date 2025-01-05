@@ -230,8 +230,6 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
 		
 		switch cloudError.code {
             // User purged cloud database, we need to delete local cache (according Apple Guidelines)
-            // and yet, we don't call fetch zone changes because the databse doesn't return a zone change !&(#*$
-            // so this doesn't appear to get called
 		case .userDeletedZone:
 			queue.cancelAllOperations()
 			
