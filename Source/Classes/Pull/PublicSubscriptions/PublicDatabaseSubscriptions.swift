@@ -19,6 +19,7 @@ public class PublicDatabaseSubscriptions {
     private static var prefix: String { return CloudCore.config.publicSubscriptionIDPrefix }
     
     static var subscriptions: [CKSubscription] = []
+    static var subscriptionsLock = NSLock()
     
     private static let pullQueue: OperationQueue = {
         let q = OperationQueue()
@@ -66,7 +67,9 @@ public class PublicDatabaseSubscriptions {
         modifySubscriptions.modifySubscriptionsResultBlock = { result in
             switch result {
             case .success():
+                subscriptionsLock.lock()
                 self.subscriptions.append(querySubscription)
+                subscriptionsLock.unlock()
                 completion?(querySubscription, nil)
             case .failure(let error):
                 completion?(querySubscription, error)
@@ -90,10 +93,12 @@ public class PublicDatabaseSubscriptions {
         modifySubscription.modifySubscriptionsResultBlock = { result in
             switch result {
             case .success():
+                subscriptionsLock.lock()
                 let subscriptionIDs = { self.subscriptions.map { $0.subscriptionID }} ()
                 if let index = subscriptionIDs.firstIndex(of: subscriptionID) {
                     self.subscriptions.remove(at: index)
                 }
+                subscriptionsLock.unlock()
                 completion?(nil)
             case .failure(let error):
                 completion?(error)
