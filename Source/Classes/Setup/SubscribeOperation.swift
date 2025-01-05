@@ -83,10 +83,20 @@ class SubscribeOperation: AsynchronousOperation, @unchecked Sendable {
 	private func makeFetchSubscriptionOperation(for database: CKDatabase, searchForSubscriptionID subscriptionID: String, operationToCancelIfSubcriptionExists operationToCancel: CKModifySubscriptionsOperation) -> CKFetchSubscriptionsOperation {
 		let fetchSubscriptions = CKFetchSubscriptionsOperation(subscriptionIDs: [subscriptionID])
 		fetchSubscriptions.database = database
+        fetchSubscriptions.perSubscriptionResultBlock = { subID, result in
+            if case .failure(let error) = result {
+                // Cancellation is not an error
+                if case CKError.operationCancelled = error { return }
+                
+                self.errorBlock?(error)
+            }
+        }
         fetchSubscriptions.fetchSubscriptionsResultBlock = { result in
             // If no errors then subscription is found and we don't need to subscribe again
             if case .success() = result {
                 operationToCancel.cancel()
+            } else if case .failure(let error) = result {
+                print(error.localizedDescription)
             }
         }
         fetchSubscriptions.qualityOfService = .userInitiated
