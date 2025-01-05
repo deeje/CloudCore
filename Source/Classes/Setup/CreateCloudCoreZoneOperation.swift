@@ -27,6 +27,11 @@ class CreateCloudCoreZoneOperation: AsynchronousOperation, @unchecked Sendable {
 		let cloudCoreZone = CKRecordZone(zoneName: CloudCore.config.zoneName)
 		let recordZoneOperation = CKModifyRecordZonesOperation(recordZonesToSave: [cloudCoreZone], recordZoneIDsToDelete: nil)
         recordZoneOperation.qualityOfService = .userInitiated
+        recordZoneOperation.perRecordZoneSaveBlock = { recordZone, error in
+            if case let .failure(error) = error {
+                print("CreateCloudCoreZoneOperation.perRecordZoneSave error: \(error)")
+            }
+        }
         recordZoneOperation.modifyRecordZonesResultBlock = { result in
             if case let .failure(error) = result {
                 self.errorBlock?(error)
