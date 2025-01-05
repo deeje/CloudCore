@@ -20,8 +20,6 @@ public class PublicDatabaseSubscriptions {
     
     static var subscriptions: [CKSubscription] = []
     
-    static var subscriptionIDs = { subscriptions.map { $0.subscriptionID }} ()
-    
     private static let pullQueue: OperationQueue = {
         let q = OperationQueue()
         q.maxConcurrentOperationCount = 1
@@ -54,6 +52,7 @@ public class PublicDatabaseSubscriptions {
         let newSubscriptionID = prefix + recordType + "-" + predicate.predicateFormat
         
             // if we are already subscribed, return
+        let subscriptionIDs = { subscriptions.map { $0.subscriptionID }} ()
         if subscriptionIDs.firstIndex(of: newSubscriptionID) != nil { return }
         
         let options: CKQuerySubscription.Options = [.firesOnRecordCreation, .firesOnRecordUpdate, .firesOnRecordDeletion]
@@ -91,7 +90,8 @@ public class PublicDatabaseSubscriptions {
         modifySubscription.modifySubscriptionsResultBlock = { result in
             switch result {
             case .success():
-                if let index = self.subscriptionIDs.firstIndex(of: subscriptionID) {
+                let subscriptionIDs = { self.subscriptions.map { $0.subscriptionID }} ()
+                if let index = subscriptionIDs.firstIndex(of: subscriptionID) {
                     self.subscriptions.remove(at: index)
                 }
                 completion?(nil)
