@@ -73,6 +73,9 @@ class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
             if case let .success(record) = result {
                 self.recordChangedBlock?(record)
             }
+            else if case let .failure(error) = result {
+                print("fetchRecordZoneChanges.recordWasChanged error: \(error)")
+            }
         }
 		fetchRecordZoneChanges.recordWithIDWasDeletedBlock = { recordID, _ in
 			self.recordWithIDWasDeletedBlock?(recordID)
@@ -94,7 +97,16 @@ class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
                     self.fetchQueue.addOperation(finish)
                 }
             case .failure(let error):
+                print("fetchRecordZoneChanges.recordZoneFetchResult error: \(error)")
                 self.errorBlock?(zoneId, error)
+            }
+        }
+        fetchRecordZoneChanges.fetchRecordZoneChangesResultBlock = { result in
+            switch result {
+            case .success:
+                break
+            case .failure(let error):
+                print("fetchRecordZoneChanges.fetchRecordZoneChangesResult error: \(error)")
             }
         }
 		
