@@ -177,6 +177,7 @@ class CloudCoreCacheManager: NSObject {
         let container = container
         let context = processContext
         
+        // hmmmm can only pload to your own zone, not sure how that works when adding to a shared record
         var database = container.privateCloudDatabase
         
         context.perform {
@@ -194,6 +195,10 @@ class CloudCoreCacheManager: NSObject {
                     database = container.publicCloudDatabase
                 } else {
                     record = try? cacheable.restoreRecordWithSystemFields(for: .private)
+                    
+                    if record?.recordID.zoneID.ownerName != CKCurrentUserDefaultName {
+                        database = container.sharedCloudDatabase
+                    }
                 }
                 
                 guard let record else { return }
@@ -280,6 +285,10 @@ class CloudCoreCacheManager: NSObject {
                     database = container.publicCloudDatabase
                 } else {
                     record = try? cacheable.restoreRecordWithSystemFields(for: .private)
+                    
+                    if record?.recordID.zoneID.ownerName != CKCurrentUserDefaultName {
+                        database = container.sharedCloudDatabase
+                    }
                 }
                 
                 guard let record else { return }
