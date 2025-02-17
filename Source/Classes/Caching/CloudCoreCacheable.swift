@@ -96,6 +96,14 @@ public extension CloudCoreCacheable {
         return cacheDirectory
     }
     
+    var data: Data? {
+        if localAvailable == true {
+            return try? Data(contentsOf: url)
+        } else {
+            return nil
+        }
+    }
+    
     func removeLocal() {
         if localAvailable {
             try? FileManager.default.removeItem(at: url)
