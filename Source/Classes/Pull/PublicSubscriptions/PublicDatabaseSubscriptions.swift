@@ -63,13 +63,14 @@ public class PublicDatabaseSubscriptions {
         notificationInfo.shouldSendContentAvailable = true
         querySubscription.notificationInfo = notificationInfo
         
+        subscriptionsLock.lock()
+        self.subscriptions.append(querySubscription)
+        subscriptionsLock.unlock()
+        
         let modifySubscriptions = CKModifySubscriptionsOperation(subscriptionsToSave: [querySubscription], subscriptionIDsToDelete: [])
         modifySubscriptions.modifySubscriptionsResultBlock = { result in
             switch result {
             case .success():
-                subscriptionsLock.lock()
-                self.subscriptions.append(querySubscription)
-                subscriptionsLock.unlock()
                 completion?(querySubscription, nil)
             case .failure(let error):
                 completion?(querySubscription, error)
@@ -89,16 +90,17 @@ public class PublicDatabaseSubscriptions {
     // - Parameters:
     //   - subscriptionID: id of subscription to remove
     static public func unsubscribe(subscriptionID: String, completion: ((Error?) -> Void)?) {
+        subscriptionsLock.lock()
+        let subscriptionIDs = { self.subscriptions.map { $0.subscriptionID }} ()
+        if let index = subscriptionIDs.firstIndex(of: subscriptionID) {
+            self.subscriptions.remove(at: index)
+        }
+        subscriptionsLock.unlock()
+        
         let modifySubscription = CKModifySubscriptionsOperation(subscriptionsToSave: [], subscriptionIDsToDelete: [subscriptionID])
         modifySubscription.modifySubscriptionsResultBlock = { result in
             switch result {
             case .success():
-                subscriptionsLock.lock()
-                let subscriptionIDs = { self.subscriptions.map { $0.subscriptionID }} ()
-                if let index = subscriptionIDs.firstIndex(of: subscriptionID) {
-                    self.subscriptions.remove(at: index)
-                }
-                subscriptionsLock.unlock()
                 completion?(nil)
             case .failure(let error):
                 completion?(error)
@@ -125,13 +127,15 @@ public class PublicDatabaseSubscriptions {
     // Recommended to use after application's UserDefaults reset.
     //
     // - Parameter completion: called upon operation completion, contains list of CloudCore subscriptions and error
-    static public func fetchSubscriptions(errorCompletion: ErrorBlock? = nil, successCompletion: (([CKSubscription]) -> Void)? = nil) {
+    static public func fetchSubscriptions(completion: (([CKSubscription]?, Error?) -> Void)? = nil) {
         let operation = FetchPublicSubscriptionsOperation()
-        operation.errorBlock = errorCompletion
+        operation.errorBlock = { error in
+            completion?(nil, error)
+        }
         operation.fetchCompletionBlock = { subscriptions in
             self.subscriptions = subscriptions
             
-            successCompletion?(subscriptions)
+            completion?(subscriptions, nil)
         }
         pullQueue.addOperation(operation)
     }
