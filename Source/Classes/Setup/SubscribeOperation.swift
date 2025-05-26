@@ -63,11 +63,19 @@ class SubscribeOperation: AsynchronousOperation, @unchecked Sendable {
         let subscription = (database == CloudCore.config.container.sharedCloudDatabase) ? CKDatabaseSubscription(subscriptionID: id) :
             CKRecordZoneSubscription(zoneID: CloudCore.config.privateZoneID(), subscriptionID: id)
         subscription.notificationInfo = notificationInfo
-
+        
+        var perSuccessError: Error? = nil
 		let modifySubscriptions = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
         modifySubscriptions.database = database
-        modifySubscriptions.modifySubscriptionsResultBlock = { result in
+        modifySubscriptions.perSubscriptionSaveBlock = { subID, result in
             if case let .failure(error) = result {
+                perSuccessError = error
+            }
+        }
+        modifySubscriptions.modifySubscriptionsResultBlock = { result in
+            if perSuccessError != nil {
+                self.errorBlock?(perSuccessError!)
+            } else if case let .failure(error) = result {
                 // Cancellation is not an error
                 if case CKError.operationCancelled = error { return }
                 

@@ -67,13 +67,23 @@ public class PublicDatabaseSubscriptions {
         self.subscriptions.append(querySubscription)
         subscriptionsLock.unlock()
         
+        var perSuccessError: Error? = nil
         let modifySubscriptions = CKModifySubscriptionsOperation(subscriptionsToSave: [querySubscription], subscriptionIDsToDelete: [])
+        modifySubscriptions.perSubscriptionSaveBlock = { subID, result in
+            if case let .failure(error) = result {
+                perSuccessError = error
+            }
+        }
         modifySubscriptions.modifySubscriptionsResultBlock = { result in
-            switch result {
-            case .success():
-                completion?(querySubscription, nil)
-            case .failure(let error):
-                completion?(querySubscription, error)
+            if perSuccessError != nil {
+                completion?(querySubscription, perSuccessError)
+            } else {
+                switch result {
+                case .success():
+                    completion?(querySubscription, nil)
+                case .failure(let error):
+                    completion?(querySubscription, error)
+                }
             }
         }
         
@@ -97,13 +107,23 @@ public class PublicDatabaseSubscriptions {
         }
         subscriptionsLock.unlock()
         
+        var perSuccessError: Error? = nil
         let modifySubscription = CKModifySubscriptionsOperation(subscriptionsToSave: [], subscriptionIDsToDelete: [subscriptionID])
+        modifySubscription.perSubscriptionDeleteBlock = { subID, result in
+            if case let .failure(error) = result {
+                perSuccessError = error
+            }
+        }
         modifySubscription.modifySubscriptionsResultBlock = { result in
-            switch result {
-            case .success():
-                completion?(nil)
-            case .failure(let error):
-                completion?(error)
+            if perSuccessError != nil {
+                completion?(perSuccessError)
+            } else {
+                switch result {
+                case .success():
+                    completion?(nil)
+                case .failure(let error):
+                    completion?(error)
+                }
             }
         }
         
