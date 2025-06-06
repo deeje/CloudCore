@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   s.tvos.deployment_target = '15.0'
   s.watchos.deployment_target = '8.0'
 
-  s.source_files = 'Source/**/*.swift'
+  s.source_files = 'CloudCore/**/*.swift'
 
   s.ios.frameworks = 'Foundation', 'CloudKit', 'CoreData'
   s.osx.frameworks = 'Foundation', 'CloudKit', 'CoreData'
