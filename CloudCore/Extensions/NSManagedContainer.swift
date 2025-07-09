@@ -17,4 +17,14 @@ extension NSPersistentContainer {
         }
     }
     
+    public func performBackgroundPushTaskAndWait(_ block: @escaping (NSManagedObjectContext) -> Void) {
+        let moc = newBackgroundContext()
+        moc.name = CloudCore.config.pushContextName
+        moc.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        
+        moc.performAndWait {
+            block(moc)
+        }
+    }
+
 }
