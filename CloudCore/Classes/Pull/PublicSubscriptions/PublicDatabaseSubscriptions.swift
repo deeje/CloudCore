@@ -8,12 +8,12 @@
 
 import CloudKit
 import CoreData
-import UIKit
 
 private let lastSyncDatesKey = "lastSyncDates"
 
 // Use that class to manage subscriptions to public CloudKit database.
 // If you want to sync some records with public database you need to subsrcibe for notifications on that changes to enable iCloud -> Local database syncing.
+
 public class PublicDatabaseSubscriptions {
     
     private static var prefix: String { return CloudCore.config.publicSubscriptionIDPrefix }
