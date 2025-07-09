@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2021 deeje cooley
+Copyright (c) 2025 deeje cooley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
