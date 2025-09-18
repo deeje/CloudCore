@@ -12,6 +12,7 @@ extension NSPersistentContainer {
     public func performBackgroundPushTask(_ block: @escaping (NSManagedObjectContext) -> Void) {
         performBackgroundTask { moc in
             moc.name = CloudCore.config.pushContextName
+            moc.transactionAuthor = self.viewContext.transactionAuthor
             moc.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
             block(moc)
         }
@@ -20,6 +21,7 @@ extension NSPersistentContainer {
     public func performBackgroundPushTaskAndWait(_ block: @escaping (NSManagedObjectContext) -> Void) {
         let moc = newBackgroundContext()
         moc.name = CloudCore.config.pushContextName
+        moc.transactionAuthor = self.viewContext.transactionAuthor
         moc.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         
         moc.performAndWait {
