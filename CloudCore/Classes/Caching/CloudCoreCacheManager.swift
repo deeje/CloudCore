@@ -273,6 +273,8 @@ class CloudCoreCacheManager: NSObject {
         context.perform {
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
+            var doAdd = false
+            
             var fetchOp: CKFetchRecordsOperation!
             if let operationID = cacheable.operationID {
                 fetchOp = self.findLongLivedOperation(with: operationID) as? CKFetchRecordsOperation
@@ -298,6 +300,8 @@ class CloudCoreCacheManager: NSObject {
                 fetchOp.desiredKeys = [cacheable.assetFieldName]
                 
                 cacheable.operationID = fetchOp.operationID
+                
+                doAdd = true
             }
             
             fetchOp.perRecordProgressBlock = { record, progress in
@@ -345,7 +349,8 @@ class CloudCoreCacheManager: NSObject {
 
             }
             fetchOp.longLivedOperationWasPersistedBlock = { }
-            if !fetchOp.isExecuting {
+            // if !fetchOp.isExecuting {
+            if doAdd {
                 database.add(fetchOp)
             }
             
