@@ -247,6 +247,7 @@ class CoreDataObserver {
                     }
                 }
             } catch {
+                /*
                 let nserror = error as NSError
                 switch nserror.code {
                 case NSPersistentHistoryTokenExpiredError:
@@ -254,6 +255,8 @@ class CoreDataObserver {
                 default:
                     fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
                 }
+                */
+                settings.set(nil, forKey: CloudCore.config.persistentHistoryTokenKey)
             }
             
             #if TARGET_OS_IOS
