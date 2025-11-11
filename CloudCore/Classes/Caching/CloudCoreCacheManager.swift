@@ -97,8 +97,11 @@ class CloudCoreCacheManager: NSObject {
                 let pinnedUnset = NSPredicate(format: "%K == nil", "pinned")
                 let unpinned = NSCompoundPredicate(orPredicateWithSubpredicates: [pinnedFalse, pinnedUnset])
                 
+                let cached = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.cached.rawValue)
+                let unpinnedAndCached = NSCompoundPredicate(andPredicateWithSubpredicates: [unpinned, cached])
+                
                 let unpinnedRequest = NSFetchRequest<NSManagedObject>(entityName: name)
-                unpinnedRequest.predicate = unpinned
+                unpinnedRequest.predicate = unpinnedAndCached
                 unpinnedRequest.sortDescriptors = [NSSortDescriptor(key: "lastUsed", ascending: false)]
                 
                 do {
