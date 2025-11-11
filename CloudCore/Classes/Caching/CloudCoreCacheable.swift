@@ -36,9 +36,14 @@ public protocol CloudCoreCacheable: CloudCoreType {
     var downloadProgress: Double { get set }
     var lastErrorMessage: String? { get set }
     
+    var pinned: Bool { get set }
+    var lastUsed: Date? { get set }
+    
         // sync'ed
     var remoteStatusRaw: String? { get set }
     var suffix: String? { get set }
+    
+    var size: Int64 { get set }
     
 }
 

@@ -79,6 +79,18 @@ public struct CloudCoreConfig {
 	public var userDefaultsKeyTokens = "CloudCoreTokens"
     public var persistentHistoryTokenKey = "lastPersistentHistoryTokenKey"
 	
+    // MARK: Cache Management
+    
+    /// minimum cache count
+    ///
+    /// Default value is 5 cacheables
+    public var minCacheCount = 5
+    
+    /// maximum cache size
+    ///
+    /// Default value is 1Gb
+    public var maxCacheSize = (1 * 1024 * 1024 * 1024)
+    
     public init() {
         
     }

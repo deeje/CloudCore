@@ -127,7 +127,7 @@ open class CloudCore {
 		observer.start()
 		self.coreDataObserver = observer
 		
-        self.cacheManager = CloudCoreCacheManager(persistentContainer: persistentContainer, processContext: processContext)
+        self.cacheManager = CloudCoreCacheManager(persistentContainer: persistentContainer, observingContext: processContext)
         
 		// Subscribe (subscription may be outdated/removed)
 		let subscribeOperation = SubscribeOperation()

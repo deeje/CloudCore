@@ -14,15 +14,17 @@ import Network
 class CloudCoreCacheManager: NSObject {
     
     private let persistentContainer: NSPersistentContainer
-    private let processContext: NSManagedObjectContext
+    private let observingContext: NSManagedObjectContext
+    private let changingContext: NSManagedObjectContext
     private let container: CKContainer
     private let cacheableClassNames: [String]
     
     private var frcs: [NSFetchedResultsController<NSManagedObject>] = []
     
-    public init(persistentContainer: NSPersistentContainer, processContext: NSManagedObjectContext) {
+    public init(persistentContainer: NSPersistentContainer, observingContext: NSManagedObjectContext) {
         self.persistentContainer = persistentContainer
-        self.processContext = processContext
+        self.observingContext = observingContext
+        self.changingContext = persistentContainer.newBackgroundContext()
         
         self.container = CloudCore.config.container
         
@@ -57,7 +59,8 @@ class CloudCoreCacheManager: NSObject {
     }
     
     func update(_ cacheableIDs: [NSManagedObjectID], change: @escaping (CloudCoreCacheable) -> Void) {
-        persistentContainer.performBackgroundTask { context in
+        let context = changingContext
+        context.perform {
             context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
             do {
                 for cacheableID in cacheableIDs {
@@ -75,8 +78,57 @@ class CloudCoreCacheManager: NSObject {
         }
     }
     
+    func unloadStale() {
+        /*
+         New properties
+         - Last Opened
+         
+         Discard over X file count
+         Discard over Y bytes
+         Discard after Z date
+
+         Ignore Pinned (e.g. thumbnails)
+         */
+        
+        let context = changingContext
+        context.perform {
+            for name in self.cacheableClassNames {
+                let pinnedFalse = NSPredicate(format: "%K == %@", "pinned", false)
+                let pinnedUnset = NSPredicate(format: "%K == nil", "pinned")
+                let unpinned = NSCompoundPredicate(orPredicateWithSubpredicates: [pinnedFalse, pinnedUnset])
+                
+                let unpinnedRequest = NSFetchRequest<NSManagedObject>(entityName: name)
+                unpinnedRequest.predicate = unpinned
+                unpinnedRequest.sortDescriptors = [NSSortDescriptor(key: "lastUsed", ascending: false)]
+                
+                do {
+                    let allUnpinned = try context.fetch(unpinnedRequest) as! [CloudCoreCacheable]
+                    
+                    
+                    var keepCount = CloudCore.config.minCacheCount
+                    var cacheSize: Int64 = 0
+                    
+                    while (cacheSize < CloudCore.config.maxCacheSize) && (keepCount < allUnpinned.count) {
+                        let cacheable = allUnpinned[keepCount]
+                        cacheSize += cacheable.size
+                        keepCount += 1
+                    }
+                    
+                    let stale = allUnpinned.dropFirst(keepCount)
+                    
+                    for cacheable in stale {
+                        self.unload(cacheableID: cacheable.objectID)
+                    }
+                } catch {
+                    print(error)
+                }
+            }
+        }
+
+    }
+    
     private func configureObservers() {
-        let context = processContext
+        let context = observingContext
         
         context.perform {
             for name in self.cacheableClassNames {
@@ -106,7 +158,7 @@ class CloudCoreCacheManager: NSObject {
     }
     
     func restartOperations() {
-        let context = processContext
+        let context = observingContext
         
         context.perform {
             for name in self.cacheableClassNames {
@@ -175,7 +227,7 @@ class CloudCoreCacheManager: NSObject {
         { return }
         
         let container = container
-        let context = processContext
+        let context = observingContext
         
         // hmmmm can only pload to your own zone, not sure how that works when adding to a shared record
         var database = container.privateCloudDatabase
@@ -244,7 +296,9 @@ class CloudCoreCacheManager: NSObject {
                     cacheable.lastErrorMessage = errorMessage
                 }
             }
-            modifyOp.modifyRecordsResultBlock = { result in }
+            modifyOp.modifyRecordsResultBlock = { result in
+                self.unloadStale()
+            }
             modifyOp.longLivedOperationWasPersistedBlock = { }
             if !modifyOp.isExecuting {
                 database.add(modifyOp)
@@ -266,7 +320,7 @@ class CloudCoreCacheManager: NSObject {
         { return }
         
         let container = container
-        let context = processContext
+        let context = observingContext
         
         var database = container.privateCloudDatabase
         
@@ -345,8 +399,13 @@ class CloudCoreCacheManager: NSObject {
                     cacheable.downloadProgress = 0
                     cacheable.cacheState = success ? .cached : .remote
                     cacheable.lastErrorMessage = errorMessage
+                    if success {
+                        cacheable.lastUsed = Date()
+                    }
                 }
-
+            }
+            fetchOp.fetchRecordsResultBlock = { result in
+                self.unloadStale()
             }
             fetchOp.longLivedOperationWasPersistedBlock = { }
             // if !fetchOp.isExecuting {
@@ -389,11 +448,11 @@ extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
                     newIndexPath: IndexPath?) {
         guard let cacheable = anObject as? CloudCoreCacheable else { return }
         
-        if cacheable.cacheState == .upload
-            || cacheable.cacheState == .download
-            || cacheable.cacheState == .unload
-        {
+        switch cacheable.cacheState {
+        case .upload, .download, .unload:
             process(cacheables: [cacheable])
+        default:
+            break
         }
     }
     
