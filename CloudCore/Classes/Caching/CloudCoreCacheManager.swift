@@ -25,6 +25,7 @@ class CloudCoreCacheManager: NSObject {
         self.persistentContainer = persistentContainer
         self.observingContext = observingContext
         self.changingContext = persistentContainer.newBackgroundContext()
+        self.changingContext.automaticallyMergesChangesFromParent = true
         
         self.container = CloudCore.config.container
         
