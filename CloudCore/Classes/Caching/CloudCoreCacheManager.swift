@@ -108,7 +108,6 @@ class CloudCoreCacheManager: NSObject {
                 do {
                     let allUnpinned = try context.fetch(unpinnedRequest) as! [CloudCoreCacheable]
                     
-                    
                     var keepCount = CloudCore.config.minCacheCount
                     var cacheSize: Int64 = 0
                     
@@ -302,6 +301,10 @@ class CloudCoreCacheManager: NSObject {
                     cacheable.cacheState = success ? .cached : .local
                     cacheable.remoteStatus = success ? .available : .pending
                     cacheable.lastErrorMessage = errorMessage
+                    
+                    if success {
+                        cacheable.lastUsed = Date()
+                    }
                 }
             }
             uploadOp.modifyRecordsResultBlock = { result in
