@@ -21,7 +21,7 @@ public enum PullResult: UInt {
 	case failed = 2
 }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
 	import UIKit
 	
 	public extension PullResult {
