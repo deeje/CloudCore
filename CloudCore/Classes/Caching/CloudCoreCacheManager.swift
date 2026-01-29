@@ -239,12 +239,14 @@ class CloudCoreCacheManager: NSObject {
         context.perform {
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
-            var modifyOp: CKModifyRecordsOperation!
+            var doAdd = false
+            
+            var uploadOp: CKModifyRecordsOperation!
             if let operationID = cacheable.operationID {
-                modifyOp = self.findLongLivedOperation(with: operationID) as? CKModifyRecordsOperation
+                uploadOp = self.findLongLivedOperation(with: operationID) as? CKModifyRecordsOperation
             }
             
-            if modifyOp == nil
+            if uploadOp == nil
             {
                 var record = try? cacheable.restoreRecordWithSystemFields(for: .public)
                 if record != nil {
@@ -262,21 +264,23 @@ class CloudCoreCacheManager: NSObject {
                 record[cacheable.assetFieldName] = CKAsset(fileURL: cacheable.url)
                 record["remoteStatusRaw"] = RemoteStatus.available.rawValue
                 
-                modifyOp = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
-                modifyOp.configuration = self.longLivedConfiguration(qos: .utility)
-                modifyOp.savePolicy = .changedKeys
+                uploadOp = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
+                uploadOp.configuration = self.longLivedConfiguration(qos: .utility)
+                uploadOp.savePolicy = .changedKeys
                 
-                cacheable.operationID = modifyOp.operationID
+                cacheable.operationID = uploadOp.operationID
+                
+                doAdd = true
             }
             
-            modifyOp.perRecordProgressBlock = { record, progress in
+            uploadOp.perRecordProgressBlock = { record, progress in
                 self.update([cacheableID]) { cacheable in
                     if progress > cacheable.uploadProgress {
                         cacheable.uploadProgress = progress
                     }
                 }
             }
-            modifyOp.perRecordSaveBlock = { recordID, result in
+            uploadOp.perRecordSaveBlock = { recordID, result in
                 var success = true
                 var errorMessage: String?
                 
@@ -300,12 +304,13 @@ class CloudCoreCacheManager: NSObject {
                     cacheable.lastErrorMessage = errorMessage
                 }
             }
-            modifyOp.modifyRecordsResultBlock = { result in
+            uploadOp.modifyRecordsResultBlock = { result in
                 self.unloadStale()
             }
-            modifyOp.longLivedOperationWasPersistedBlock = { }
-            if !modifyOp.isExecuting {
-                database.add(modifyOp)
+            uploadOp.longLivedOperationWasPersistedBlock = { }
+            
+            if doAdd {
+                database.add(uploadOp)
             }
             
             if cacheable.cacheState != .uploading {
@@ -333,12 +338,12 @@ class CloudCoreCacheManager: NSObject {
             
             var doAdd = false
             
-            var fetchOp: CKFetchRecordsOperation!
+            var downloadOp: CKFetchRecordsOperation!
             if let operationID = cacheable.operationID {
-                fetchOp = self.findLongLivedOperation(with: operationID) as? CKFetchRecordsOperation
+                downloadOp = self.findLongLivedOperation(with: operationID) as? CKFetchRecordsOperation
             }
             
-            if fetchOp == nil
+            if downloadOp == nil
             {
                 var record = try? cacheable.restoreRecordWithSystemFields(for: .public)
                 if record != nil {
@@ -353,23 +358,23 @@ class CloudCoreCacheManager: NSObject {
                 
                 guard let record else { return }
                 
-                fetchOp = CKFetchRecordsOperation(recordIDs: [record.recordID])
-                fetchOp.configuration = self.longLivedConfiguration(qos: .userInitiated)
-                fetchOp.desiredKeys = [cacheable.assetFieldName]
+                downloadOp = CKFetchRecordsOperation(recordIDs: [record.recordID])
+                downloadOp.configuration = self.longLivedConfiguration(qos: .userInitiated)
+                downloadOp.desiredKeys = [cacheable.assetFieldName]
                 
-                cacheable.operationID = fetchOp.operationID
+                cacheable.operationID = downloadOp.operationID
                 
                 doAdd = true
             }
             
-            fetchOp.perRecordProgressBlock = { record, progress in
+            downloadOp.perRecordProgressBlock = { record, progress in
                 self.update([cacheableID]) { cacheable in
                     if progress > cacheable.downloadProgress {
                         cacheable.downloadProgress = progress
                     }
                 }
             }
-            fetchOp.perRecordResultBlock = { recordID, result in
+            downloadOp.perRecordResultBlock = { recordID, result in
                 var record: CKRecord?
                 var success = true
                 var errorMessage: String?
@@ -408,13 +413,13 @@ class CloudCoreCacheManager: NSObject {
                     }
                 }
             }
-            fetchOp.fetchRecordsResultBlock = { result in
+            downloadOp.fetchRecordsResultBlock = { result in
                 self.unloadStale()
             }
-            fetchOp.longLivedOperationWasPersistedBlock = { }
-            // if !fetchOp.isExecuting {
+            downloadOp.longLivedOperationWasPersistedBlock = { }
+            
             if doAdd {
-                database.add(fetchOp)
+                database.add(downloadOp)
             }
             
             if cacheable.cacheState != .downloading {
