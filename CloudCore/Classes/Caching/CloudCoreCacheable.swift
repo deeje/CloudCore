@@ -20,6 +20,8 @@ public enum CacheState: String {
     case cached
     
     case unload         // -> remote
+    
+    case cancel         // -> uploading -> local OR downloading -> remote
 }
 
 public enum RemoteStatus: String {

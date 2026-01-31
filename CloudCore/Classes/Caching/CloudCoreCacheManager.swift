@@ -53,6 +53,8 @@ class CloudCoreCacheManager: NSObject {
                 download(cacheableID: cacheable.objectID)
             case .unload:
                 unload(cacheableID: cacheable.objectID)
+            case .cancel:
+                cancelOperation(cacheableID: cacheable.objectID)
             default:
                 break
             }
@@ -138,7 +140,8 @@ class CloudCoreCacheManager: NSObject {
                 let triggerUpload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.upload.rawValue)
                 let triggerDownload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.download.rawValue)
                 let triggerUnload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.unload.rawValue)
-                let triggers = NSCompoundPredicate(orPredicateWithSubpredicates: [triggerUpload, triggerDownload, triggerUnload])
+                let triggerCancel = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.cancel.rawValue)
+                let triggers = NSCompoundPredicate(orPredicateWithSubpredicates: [triggerUpload, triggerDownload, triggerUnload, triggerCancel])
                 
                 let triggerRequest = NSFetchRequest<NSManagedObject>(entityName: name)
                 triggerRequest.predicate = triggers
@@ -177,8 +180,9 @@ class CloudCoreCacheManager: NSObject {
                     self.process(cacheables: cacheables)
                 }
                 
-                    // restart failed uploads
                 let hasError = NSPredicate(format: "%K != nil", "lastErrorMessage")
+                
+                    // restart failed uploads
                 let isLocal = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.local.rawValue)
                 let failedToUpload = NSCompoundPredicate(orPredicateWithSubpredicates: [hasError, isLocal])
                 let restartRequest = NSFetchRequest<NSManagedObject>(entityName: name)
@@ -188,6 +192,18 @@ class CloudCoreCacheManager: NSObject {
                     self.update(cacheableIDs) { cacheable in
                         cacheable.lastErrorMessage = nil
                         cacheable.cacheState = .upload
+                    }
+                }
+                
+                // restart failed downloads
+                let isRemote = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.remote.rawValue)
+                let failedToDownload = NSCompoundPredicate(orPredicateWithSubpredicates: [hasError, isRemote])
+                restartRequest.predicate = failedToDownload
+                if let cacheables = try? context.fetch(restartRequest) as? [CloudCoreCacheable], !cacheables.isEmpty {
+                    let cacheableIDs = cacheables.map { $0.objectID }
+                    self.update(cacheableIDs) { cacheable in
+                        cacheable.lastErrorMessage = nil
+                        cacheable.cacheState = .download
                     }
                 }
             }
@@ -441,6 +457,20 @@ class CloudCoreCacheManager: NSObject {
         }
     }
     
+    func cancelOperation(cacheableID: NSManagedObjectID) {
+        update([cacheableID]) { cacheable in
+            if let operationID = cacheable.operationID {
+                self.cancelOperations(with: [operationID])
+                cacheable.operationID = nil
+            }
+            if cacheable.remoteStatus == .pending {
+                cacheable.cacheState = .local
+            } else if cacheable.remoteStatus == .available {
+                cacheable.cacheState = .remote
+            }
+        }
+    }
+    
     public func cancelOperations(with operationIDs: [String]) {
         for operationID in operationIDs {
             if let op = findLongLivedOperation(with: operationID) {
@@ -461,7 +491,7 @@ extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
         guard let cacheable = anObject as? CloudCoreCacheable else { return }
         
         switch cacheable.cacheState {
-        case .upload, .download, .unload:
+        case .upload, .download, .unload, .cancel:
             process(cacheables: [cacheable])
         default:
             break
