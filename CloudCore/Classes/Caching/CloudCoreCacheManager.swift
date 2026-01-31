@@ -174,9 +174,12 @@ class CloudCoreCacheManager: NSObject {
                 let download = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.download.rawValue)
                 let downloading = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.downloading.rawValue)
                 let newOrExisting = NSCompoundPredicate(orPredicateWithSubpredicates: [upload, uploading, download, downloading])
+                let noError = NSPredicate(format: "%K == nil", "lastErrorMessage")
+                let newOrExistingNoError = NSCompoundPredicate(andPredicateWithSubpredicates: [newOrExisting, noError])
                 let restoreRequest = NSFetchRequest<NSManagedObject>(entityName: name)
-                restoreRequest.predicate = newOrExisting
+                restoreRequest.predicate = newOrExistingNoError
                 if let cacheables = try? context.fetch(restoreRequest) as? [CloudCoreCacheable], !cacheables.isEmpty {
+                    print("restarting \(cacheables.count) cacheable operations")
                     self.process(cacheables: cacheables)
                 }
                 
