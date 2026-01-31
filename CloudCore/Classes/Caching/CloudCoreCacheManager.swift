@@ -301,14 +301,15 @@ class CloudCoreCacheManager: NSObject {
                 
                 if case let .failure(error) = result {
                     success = false
-                    errorMessage = error.localizedDescription
-                    
-                    CloudCore.delegate?.error(error: error, module: .cacheToCloud)
                     
                     if let cloudError = error as? CKError,
                        let number = cloudError.userInfo[CKErrorRetryAfterKey] as? NSNumber
                     {
                         CloudCore.pauseUntil = Date(timeIntervalSinceNow: number.doubleValue)
+                    } else {
+                        errorMessage = error.localizedDescription
+                        
+                        CloudCore.delegate?.error(error: error, module: .cacheToCloud)
                     }
                 }
                 
@@ -404,14 +405,15 @@ class CloudCoreCacheManager: NSObject {
                     record = fetchedRecord
                 case .failure(let error):
                     success = false
-                    errorMessage = error.localizedDescription
-                    
-                    CloudCore.delegate?.error(error: error, module: .cacheToCloud)
                     
                     if let cloudError = error as? CKError,
                        let number = cloudError.userInfo[CKErrorRetryAfterKey] as? NSNumber
                     {
                         CloudCore.pauseUntil = Date(timeIntervalSinceNow: number.doubleValue)
+                    } else {
+                        errorMessage = error.localizedDescription
+                        
+                        CloudCore.delegate?.error(error: error, module: .cacheToCloud)
                     }
                 }
 
