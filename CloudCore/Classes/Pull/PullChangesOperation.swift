@@ -99,6 +99,10 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
                             self.deleteRecordsFromDeletedZones(recordZoneIDs: deletedZoneIDs)
                         }
                         
+                        // TODO: handle purgedZoneIDs?!
+                        
+                        // TODO: handle resetZoneIDs?!
+                        
                         self.tokens.setToken(changeToken, for: database.databaseScope)
                         
                         // TODO: handle moreComing
