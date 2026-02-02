@@ -155,6 +155,7 @@ class CloudCoreCacheManager: NSObject {
                 
                 try? frc.performFetch()
                 if let cacheables = frc.fetchedObjects as? [CloudCoreCacheable] {
+                    print("starting \(cacheables.count) cacheable operations")
                     self.process(cacheables: cacheables)
                 }
                 
