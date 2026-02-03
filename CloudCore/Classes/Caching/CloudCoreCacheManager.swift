@@ -188,7 +188,7 @@ class CloudCoreCacheManager: NSObject {
                 
                     // restart failed uploads
                 let isLocal = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.local.rawValue)
-                let failedToUpload = NSCompoundPredicate(orPredicateWithSubpredicates: [hasError, isLocal])
+                let failedToUpload = NSCompoundPredicate(andPredicateWithSubpredicates: [hasError, isLocal])
                 let restartRequest = NSFetchRequest<NSManagedObject>(entityName: name)
                 restartRequest.predicate = failedToUpload
                 if let cacheables = try? context.fetch(restartRequest) as? [CloudCoreCacheable], !cacheables.isEmpty {
@@ -199,15 +199,14 @@ class CloudCoreCacheManager: NSObject {
                     }
                 }
                 
-                // restart failed downloads
+                // reset failed downloads
                 let isRemote = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.remote.rawValue)
-                let failedToDownload = NSCompoundPredicate(orPredicateWithSubpredicates: [hasError, isRemote])
+                let failedToDownload = NSCompoundPredicate(andPredicateWithSubpredicates: [hasError, isRemote])
                 restartRequest.predicate = failedToDownload
                 if let cacheables = try? context.fetch(restartRequest) as? [CloudCoreCacheable], !cacheables.isEmpty {
                     let cacheableIDs = cacheables.map { $0.objectID }
                     self.update(cacheableIDs) { cacheable in
                         cacheable.lastErrorMessage = nil
-                        cacheable.cacheState = .download
                     }
                 }
             }
