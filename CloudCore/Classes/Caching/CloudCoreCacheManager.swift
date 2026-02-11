@@ -186,11 +186,10 @@ class CloudCoreCacheManager: NSObject {
                 
                 let hasError = NSPredicate(format: "%K != nil", "lastErrorMessage")
                 
-                    // restart failed uploads
+                    // restart uploads
                 let isLocal = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.local.rawValue)
-                let failedToUpload = NSCompoundPredicate(andPredicateWithSubpredicates: [hasError, isLocal])
                 let restartRequest = NSFetchRequest<NSManagedObject>(entityName: name)
-                restartRequest.predicate = failedToUpload
+                restartRequest.predicate = isLocal
                 if let cacheables = try? context.fetch(restartRequest) as? [CloudCoreCacheable], !cacheables.isEmpty {
                     let cacheableIDs = cacheables.map { $0.objectID }
                     self.update(cacheableIDs) { cacheable in
