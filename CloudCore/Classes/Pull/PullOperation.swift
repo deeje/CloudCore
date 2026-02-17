@@ -20,6 +20,9 @@ public class PullOperation: Operation, @unchecked Sendable {
     internal var fetchedRecordIDs: [CKRecord.ID] = []
     internal var objectsWithMissingReferences = [MissingReferences]()
     
+    internal var objectCount = 0
+    internal let saveEvery = 10
+    
     public init(persistentContainer: NSPersistentContainer) {
         self.persistentContainer = persistentContainer
         
@@ -28,7 +31,7 @@ public class PullOperation: Operation, @unchecked Sendable {
         qualityOfService = .userInitiated
         
         queue.name = "PullQueue"
-        queue.maxConcurrentOperationCount = 1
+        queue.maxConcurrentOperationCount = 2
     }
     
     internal func addFetchRecordsOp(recordIDs: [CKRecord.ID], database: CKDatabase, backgroundContext: NSManagedObjectContext) {
@@ -74,7 +77,13 @@ public class PullOperation: Operation, @unchecked Sendable {
             self.errorBlock?($0)
         }
         convertOperation.completionBlock = {
+            self.objectCount += 1
+            
             context.performAndWait {
+                if self.objectCount.isMultiple(of: self.saveEvery) {
+                    try? context.save()
+                }
+                
                 self.objectsWithMissingReferences.append(convertOperation.missingObjectsPerEntities)
             }
         }
