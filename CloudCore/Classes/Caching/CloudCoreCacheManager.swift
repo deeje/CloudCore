@@ -542,7 +542,7 @@ extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
             process(cacheables: [cacheable])
         default:
             if cacheable.pinned, cacheable.cacheState == .remote, !queuedPinnedIDs.contains(cacheable.objectID) {
-                queuedPinnedIDs.insert(cacheable.objectID, at: 0)
+                queuedPinnedIDs.append(cacheable.objectID)
             } else if !cacheable.pinned, let index = queuedPinnedIDs.firstIndex(of: cacheable.objectID) {
                 queuedPinnedIDs.remove(at: index)
             }
