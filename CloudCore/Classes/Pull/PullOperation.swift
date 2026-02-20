@@ -20,11 +20,11 @@ public class PullOperation: Operation, @unchecked Sendable {
     internal var fetchedRecordIDs: [CKRecord.ID] = []
     internal var objectsWithMissingReferences = [MissingReferences]()
     
-    internal var objectCount = 0
-    internal let saveEvery = 10
+    internal var lastSave: Date
     
     public init(persistentContainer: NSPersistentContainer) {
         self.persistentContainer = persistentContainer
+        self.lastSave = Date()
         
         super.init()
         
@@ -77,11 +77,12 @@ public class PullOperation: Operation, @unchecked Sendable {
             self.errorBlock?($0)
         }
         convertOperation.completionBlock = {
-            self.objectCount += 1
-            
             context.performAndWait {
-                if self.objectCount.isMultiple(of: self.saveEvery) {
+                let delta = abs(self.lastSave.timeIntervalSinceNow)
+                if delta > 30 {
                     try? context.save()
+                    
+                    self.lastSave = Date()
                 }
                 
                 self.objectsWithMissingReferences.append(convertOperation.missingObjectsPerEntities)
