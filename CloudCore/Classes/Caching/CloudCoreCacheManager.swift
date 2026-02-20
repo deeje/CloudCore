@@ -21,6 +21,11 @@ class CloudCoreCacheManager: NSObject {
     
     private var frcs: [NSFetchedResultsController<NSManagedObject>] = []
     
+    private var uploadsInFlight = 0
+    private var downloadsInFlight = 0
+    private var pinnedFRCs: [NSFetchedResultsController<NSManagedObject>] = []
+    private var queuedPinnedIDs: [NSManagedObjectID] = []
+
     public init(persistentContainer: NSPersistentContainer, observingContext: NSManagedObjectContext) {
         self.persistentContainer = persistentContainer
         self.observingContext = observingContext
@@ -42,6 +47,7 @@ class CloudCoreCacheManager: NSObject {
         
         restartOperations()
         configureObservers()
+        ticklePinnedDownloadsQueue()
     }
     
     func process(cacheables: [CloudCoreCacheable]) {
@@ -135,31 +141,43 @@ class CloudCoreCacheManager: NSObject {
     private func configureObservers() {
         let context = observingContext
         
-        context.perform {
+        context.performAndWait {
             for name in self.cacheableClassNames {
+                    // watch for changes in cache state
                 let triggerUpload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.upload.rawValue)
                 let triggerDownload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.download.rawValue)
                 let triggerUnload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.unload.rawValue)
                 let triggerCancel = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.cancel.rawValue)
                 let triggers = NSCompoundPredicate(orPredicateWithSubpredicates: [triggerUpload, triggerDownload, triggerUnload, triggerCancel])
-                
                 let triggerRequest = NSFetchRequest<NSManagedObject>(entityName: name)
                 triggerRequest.predicate = triggers
                 triggerRequest.sortDescriptors = [NSSortDescriptor(key: "cacheStateRaw", ascending: true)]
-                
                 let frc = NSFetchedResultsController<NSManagedObject>(fetchRequest: triggerRequest,
                                                                       managedObjectContext: context,
                                                                       sectionNameKeyPath: nil,
                                                                       cacheName: nil)
                 frc.delegate = self
-                
                 try? frc.performFetch()
                 if let cacheables = frc.fetchedObjects as? [CloudCoreCacheable] {
                     print("starting \(cacheables.count) cacheable operations")
                     self.process(cacheables: cacheables)
                 }
-                
                 self.frcs.append(frc)
+                
+                    // watch for pinned cacheables
+                let pinnedRequest = NSFetchRequest<NSManagedObject>(entityName: name)
+                let isPinned = NSPredicate(format: "%K == true", "pinned")
+                pinnedRequest.predicate = isPinned
+                pinnedRequest.sortDescriptors = [NSSortDescriptor(key: "lastUsed", ascending: false)]
+                let pinnedFRC = NSFetchedResultsController<NSManagedObject>(fetchRequest: pinnedRequest,
+                                                                            managedObjectContext: context,
+                                                                            sectionNameKeyPath: nil,
+                                                                            cacheName: nil)
+                pinnedFRC.delegate = self
+                try? pinnedFRC.performFetch()
+                let pinnedIDs = pinnedFRC.fetchedObjects?.compactMap(\.objectID) ?? []
+                queuedPinnedIDs.append(contentsOf: pinnedIDs)
+                self.pinnedFRCs.append(pinnedFRC)
             }
         }
     }
@@ -167,7 +185,7 @@ class CloudCoreCacheManager: NSObject {
     func restartOperations() {
         let context = observingContext
         
-        context.perform {
+        context.performAndWait {
             for name in self.cacheableClassNames {
                     // retart new & existing ops
                 let upload = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.upload.rawValue)
@@ -254,6 +272,8 @@ class CloudCoreCacheManager: NSObject {
         var database = container.privateCloudDatabase
         
         context.perform {
+            self.uploadsInFlight += 1
+            
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
             var doAdd = false
@@ -328,6 +348,8 @@ class CloudCoreCacheManager: NSObject {
             }
             uploadOp.modifyRecordsResultBlock = { result in
                 self.unloadStale()
+                
+                self.uploadsInFlight -= 1
             }
             uploadOp.longLivedOperationWasPersistedBlock = { }
             
@@ -356,6 +378,8 @@ class CloudCoreCacheManager: NSObject {
         var database = container.privateCloudDatabase
         
         context.perform {
+            self.downloadsInFlight += 1
+
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
             var doAdd = false
@@ -438,6 +462,8 @@ class CloudCoreCacheManager: NSObject {
             }
             downloadOp.fetchRecordsResultBlock = { result in
                 self.unloadStale()
+                
+                self.downloadsInFlight -= 1
             }
             downloadOp.longLivedOperationWasPersistedBlock = { }
             
@@ -483,6 +509,16 @@ class CloudCoreCacheManager: NSObject {
         }
     }
     
+    func ticklePinnedDownloadsQueue() {
+        let maxPinnedDownloads = 20
+        let availableDownloads = maxPinnedDownloads - downloadsInFlight
+        if availableDownloads > 0, queuedPinnedIDs.count > 0 {
+            let idsToDownload = queuedPinnedIDs.prefix(availableDownloads)
+            queuedPinnedIDs.removeFirst(idsToDownload.count)
+            idsToDownload.forEach { download(cacheableID: $0) }
+        }
+    }
+    
 }
 
 extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
@@ -498,8 +534,16 @@ extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
         case .upload, .download, .unload, .cancel:
             process(cacheables: [cacheable])
         default:
-            break
+            if cacheable.pinned, cacheable.cacheState == .remote, !queuedPinnedIDs.contains(cacheable.objectID) {
+                queuedPinnedIDs.insert(cacheable.objectID, at: 0)
+            } else if !cacheable.pinned, let index = queuedPinnedIDs.firstIndex(of: cacheable.objectID) {
+                queuedPinnedIDs.remove(at: index)
+            }
         }
+    }
+    
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<any NSFetchRequestResult>) {
+        ticklePinnedDownloadsQueue()
     }
     
 }
