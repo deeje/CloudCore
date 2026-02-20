@@ -167,7 +167,8 @@ class CloudCoreCacheManager: NSObject {
                     // watch for pinned cacheables
                 let pinnedRequest = NSFetchRequest<NSManagedObject>(entityName: name)
                 let isPinned = NSPredicate(format: "%K == true", "pinned")
-                pinnedRequest.predicate = isPinned
+                let isRemote = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.remote.rawValue)
+                pinnedRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [isPinned, isRemote])
                 pinnedRequest.sortDescriptors = [NSSortDescriptor(key: "lastUsed", ascending: false)]
                 let pinnedFRC = NSFetchedResultsController<NSManagedObject>(fetchRequest: pinnedRequest,
                                                                             managedObjectContext: context,
@@ -265,6 +266,8 @@ class CloudCoreCacheManager: NSObject {
             date.timeIntervalSinceNow > 0
         { return }
         
+        self.uploadsInFlight += 1
+        
         let container = container
         let context = observingContext
         
@@ -272,8 +275,6 @@ class CloudCoreCacheManager: NSObject {
         var database = container.privateCloudDatabase
         
         context.perform {
-            self.uploadsInFlight += 1
-            
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
             var doAdd = false
@@ -350,6 +351,9 @@ class CloudCoreCacheManager: NSObject {
                 self.unloadStale()
                 
                 self.uploadsInFlight -= 1
+                if self.uploadsInFlight < 0 {
+                    self.uploadsInFlight = 0
+                }
             }
             uploadOp.longLivedOperationWasPersistedBlock = { }
             
@@ -372,14 +376,14 @@ class CloudCoreCacheManager: NSObject {
             date.timeIntervalSinceNow > 0
         { return }
         
+        self.downloadsInFlight += 1
+        
         let container = container
         let context = observingContext
         
         var database = container.privateCloudDatabase
         
         context.perform {
-            self.downloadsInFlight += 1
-
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable else { return }
             
             var doAdd = false
@@ -464,6 +468,9 @@ class CloudCoreCacheManager: NSObject {
                 self.unloadStale()
                 
                 self.downloadsInFlight -= 1
+                if self.downloadsInFlight < 0 {
+                    self.downloadsInFlight = 0
+                }
             }
             downloadOp.longLivedOperationWasPersistedBlock = { }
             
