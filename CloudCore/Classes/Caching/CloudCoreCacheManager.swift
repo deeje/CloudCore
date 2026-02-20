@@ -167,8 +167,7 @@ class CloudCoreCacheManager: NSObject {
                     // watch for pinned cacheables
                 let pinnedRequest = NSFetchRequest<NSManagedObject>(entityName: name)
                 let isPinned = NSPredicate(format: "%K == true", "pinned")
-                let isRemote = NSPredicate(format: "%K == %@", "cacheStateRaw", CacheState.remote.rawValue)
-                pinnedRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [isPinned, isRemote])
+                pinnedRequest.predicate = isPinned
                 pinnedRequest.sortDescriptors = [NSSortDescriptor(key: "lastUsed", ascending: false)]
                 let pinnedFRC = NSFetchedResultsController<NSManagedObject>(fetchRequest: pinnedRequest,
                                                                             managedObjectContext: context,
@@ -176,8 +175,12 @@ class CloudCoreCacheManager: NSObject {
                                                                             cacheName: nil)
                 pinnedFRC.delegate = self
                 try? pinnedFRC.performFetch()
-                let pinnedIDs = pinnedFRC.fetchedObjects?.compactMap(\.objectID) ?? []
-                queuedPinnedIDs.append(contentsOf: pinnedIDs)
+                if let pinnedCacheables = pinnedFRC.fetchedObjects as? [CloudCoreCacheable] {
+                    let pinnedIDs = pinnedCacheables
+                                        .filter { $0.cacheState == .remote }
+                                        .map { $0.objectID }
+                    queuedPinnedIDs.append(contentsOf: pinnedIDs)
+                }
                 self.pinnedFRCs.append(pinnedFRC)
             }
         }
