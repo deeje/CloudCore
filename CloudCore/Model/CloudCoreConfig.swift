@@ -80,7 +80,14 @@ public struct CloudCoreConfig {
     public var persistentHistoryTokenKey = "lastPersistentHistoryTokenKey"
 	
     // MARK: Cache Management
-    
+
+    /// Base directory URL for cached files. When set, this directory is used
+    /// instead of `.applicationSupportDirectory`. Use this to store files in
+    /// a shared App Group container so they are accessible from app extensions.
+    ///
+    /// Default value is `nil` (uses `.applicationSupportDirectory`)
+    public var cacheDirectoryURL: URL?
+
     /// minimum cache count
     ///
     /// Default value is 5 cacheables

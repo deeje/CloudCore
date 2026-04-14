@@ -96,11 +96,18 @@ public extension CloudCoreCacheable {
     
     var url: URL {
         let fileName = recordName! + (suffix ?? "")
-        
-        var cacheDirectory = try! FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        cacheDirectory.appendPathComponent(fileName)
-        
-        return cacheDirectory
+
+        let cacheDirectory: URL
+        if let configuredDir = CloudCore.config.cacheDirectoryURL {
+            if !FileManager.default.fileExists(atPath: configuredDir.path) {
+                try? FileManager.default.createDirectory(at: configuredDir, withIntermediateDirectories: true)
+            }
+            cacheDirectory = configuredDir
+        } else {
+            cacheDirectory = try! FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        }
+
+        return cacheDirectory.appendingPathComponent(fileName)
     }
     
     var data: Data? {
