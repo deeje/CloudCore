@@ -77,7 +77,11 @@ class ObjectToRecordOperation: Operation, @unchecked Sendable {
 				let recordValue = try attribute.makeRecordValue()
                 if #available(iOS 15.0, watchOS 8.0, tvOS 15.0, macOS 12.0, *) {
                     if attribute.description.allowsCloudEncryption {
-                        record.encryptedValues[attributeName] = (recordValue as! __CKRecordObjCValue)
+                        if let recordValue {
+                            record.encryptedValues[attributeName] = (recordValue as! __CKRecordObjCValue)
+                        } else {
+                            record.encryptedValues[attributeName] =  nil
+                        }
                     } else {
                         record.setValue(recordValue, forKey: attributeName)
                     }
