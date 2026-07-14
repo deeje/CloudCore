@@ -9,11 +9,19 @@
 import Foundation
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 class PushAllLocalDataOperation: Operation, @unchecked Sendable {
 	
 	let managedObjectModel: NSManagedObjectModel
 	let parentContext: NSManagedObjectContext
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
+    
 	var errorBlock: ErrorBlock? {
 		didSet {
 			converter.errorBlock = errorBlock
@@ -37,13 +45,18 @@ class PushAllLocalDataOperation: Operation, @unchecked Sendable {
 	override func main() {
 		super.main()
 		
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

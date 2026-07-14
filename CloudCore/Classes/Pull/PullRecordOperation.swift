@@ -8,11 +8,19 @@
 import CloudKit
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 /// An operation that fetches data from CloudKit for one record and all its child records, and saves it to Core Data
 public class PullRecordOperation: PullOperation, @unchecked Sendable {
     
     let rootRecordID: CKRecord.ID
     let database: CKDatabase
+    
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
     
     public init(rootRecordID: CKRecord.ID, database: CKDatabase, persistentContainer: NSPersistentContainer) {
         self.rootRecordID = rootRecordID
@@ -26,13 +34,18 @@ public class PullRecordOperation: PullOperation, @unchecked Sendable {
     override public func main() {
         if self.isCancelled { return }
         
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

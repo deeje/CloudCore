@@ -9,6 +9,10 @@
 import CloudKit
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 /// An operation that fetches data from CloudKit and saves it to Core Data, you can use it without calling `CloudCore.pull` methods if you application relies on `Operation`
 public class PullChangesOperation: PullOperation, @unchecked Sendable {
 	
@@ -20,6 +24,10 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
     
 	private let databases: [CKDatabase]
     private let tokens: Tokens
+    
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
     
 	/// Initialize operation, it's recommended to set `errorBlock`
 	///
@@ -42,13 +50,18 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
 	override public func main() {
 		if isCancelled { return }
         
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

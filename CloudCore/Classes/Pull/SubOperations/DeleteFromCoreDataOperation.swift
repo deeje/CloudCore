@@ -9,10 +9,18 @@
 import CoreData
 import CloudKit
 
+#if os(iOS)
+import UIKit
+#endif
+
 class DeleteFromCoreDataOperation: Operation, @unchecked Sendable {
 	let parentContext: NSManagedObjectContext
     let recordID: CKRecord.ID
 	var errorBlock: ErrorBlock?
+    
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
     
     init(parentContext: NSManagedObjectContext, recordID: CKRecord.ID) {
 		self.parentContext = parentContext
@@ -27,13 +35,18 @@ class DeleteFromCoreDataOperation: Operation, @unchecked Sendable {
 	override func main() {
 		if self.isCancelled { return }
 		
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

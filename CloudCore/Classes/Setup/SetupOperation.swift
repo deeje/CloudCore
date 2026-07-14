@@ -9,6 +9,10 @@
 import Foundation
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 /**
 	Performs several setup operations:
 
@@ -22,6 +26,10 @@ class SetupOperation: Operation, @unchecked Sendable {
 	let container: NSPersistentContainer
     let uploadAllData: Bool
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
+    
 	/// - Parameters:
 	///   - container: persistent container to get managedObject model from
 	///   - parentContext: context where changed data will be save (recordID's). If it is `nil`, new context will be created from `container` and saved
@@ -40,13 +48,18 @@ class SetupOperation: Operation, @unchecked Sendable {
 	override func main() {
 		super.main()
 		
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

@@ -8,12 +8,20 @@
 
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 class PurgeLocalDatabaseOperation: Operation, @unchecked Sendable {
 	
 	let parentContext: NSManagedObjectContext
 	let managedObjectModel: NSManagedObjectModel
 	var errorBlock: ErrorBlock?
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
+    
 	init(parentContext: NSManagedObjectContext, managedObjectModel: NSManagedObjectModel) {
 		self.parentContext = parentContext
 		self.managedObjectModel = managedObjectModel
@@ -27,13 +35,18 @@ class PurgeLocalDatabaseOperation: Operation, @unchecked Sendable {
 	override func main() {
 		super.main()
 		
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

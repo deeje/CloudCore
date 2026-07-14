@@ -10,6 +10,10 @@ import Foundation
 import CoreData
 import CloudKit
 
+#if os(iOS)
+import UIKit
+#endif
+
 /// Class responsible for taking action on Core Data changes
 class CoreDataObserver {
 	var persistentContainer: NSPersistentContainer
@@ -24,6 +28,10 @@ class CoreDataObserver {
     
     var isProcessing = false
     var processAgain = true
+    
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
     
 	// Used for errors delegation
 	weak var delegate: CloudCoreDelegate?
@@ -217,8 +225,21 @@ class CoreDataObserver {
             return
         }
         
-        #if TARGET_OS_IOS
-        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "CloudCore.processPersistentHistory")
+        #if os(iOS)
+        let app = UIApplication.shared
+        let name = "CoreDataObserver"
+        
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
+        }
+        defer {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+        }
         #endif
         
         isProcessing = true
@@ -258,10 +279,6 @@ class CoreDataObserver {
                 */
                 settings.set(nil, forKey: CloudCore.config.persistentHistoryTokenKey)
             }
-            
-            #if TARGET_OS_IOS
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            #endif
             
             DispatchQueue.main.async {
                 self.isProcessing = false

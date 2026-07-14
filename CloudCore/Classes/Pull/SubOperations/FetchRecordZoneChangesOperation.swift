@@ -8,6 +8,10 @@
 
 import CloudKit
 
+#if os(iOS)
+import UIKit
+#endif
+
 class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
 	// Set on init
 	let tokens: Tokens
@@ -23,6 +27,10 @@ class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
     private let optionsByRecordZoneID: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration]
 	private let fetchQueue = OperationQueue()
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
+    
     init(from database: CKDatabase, recordZoneIDs: [CKRecordZone.ID], tokens: Tokens, desiredKeys: [String]? = nil) {
 		self.tokens = tokens
 		self.database = database
@@ -46,13 +54,18 @@ class FetchRecordZoneChangesOperation: Operation, @unchecked Sendable {
 	override func main() {
 		super.main()
         
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

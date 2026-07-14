@@ -9,6 +9,10 @@
 import CloudKit
 import CoreData
 
+#if os(iOS)
+import UIKit
+#endif
+
 class ObjectToRecordOperation: Operation, @unchecked Sendable {
 	var managedObjectContext: NSManagedObjectContext?
 	
@@ -22,6 +26,9 @@ class ObjectToRecordOperation: Operation, @unchecked Sendable {
 	var errorCompletionBlock: ((Error) -> Void)?
 	var conversionCompletionBlock: ((CKRecord) -> Void)?
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
     init(scope: CKDatabase.Scope, record: CKRecord, changedAttributes: [String]?, serviceAttributeNames: ServiceAttributeNames) {
 		self.scope = scope
         self.record = record
@@ -42,13 +49,18 @@ class ObjectToRecordOperation: Operation, @unchecked Sendable {
 			return
 		}
 		
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         

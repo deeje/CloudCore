@@ -9,6 +9,10 @@
 import CoreData
 import CloudKit
 
+#if os(iOS)
+import UIKit
+#endif
+
 typealias AttributeName = String
 typealias RecordName = String
 typealias MissingReferences = [NSManagedObject: [AttributeName: [RecordName]]]
@@ -20,6 +24,10 @@ public class RecordToCoreDataOperation: AsynchronousOperation, @unchecked Sendab
 	var errorBlock: ErrorBlock?
     var missingObjectsPerEntities = MissingReferences()
 	
+    #if os(iOS)
+    private var backgroundTaskID: UIBackgroundTaskIdentifier?
+    #endif
+    
     /// - Parameters:
     ///   - parentContext: operation will be safely performed in that context, **operation doesn't save that context** you need to do it manually
     ///   - record: record that will be converted to `NSManagedObject`
@@ -36,13 +44,18 @@ public class RecordToCoreDataOperation: AsynchronousOperation, @unchecked Sendab
     override public func main() {
 		if self.isCancelled { return }
         
-        #if TARGET_OS_IOS
+        #if os(iOS)
         let app = UIApplication.shared
-        var backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            app.endBackgroundTask(backgroundTaskID!)
+        backgroundTaskID = app.beginBackgroundTask(withName: name) {
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
+            self.backgroundTaskID = nil
         }
         defer {
-            app.endBackgroundTask(backgroundTaskID!)
+            if let taskID = self.backgroundTaskID {
+                app.endBackgroundTask(taskID)
+            }
         }
         #endif
         
