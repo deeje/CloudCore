@@ -50,21 +50,6 @@ public class PullChangesOperation: PullOperation, @unchecked Sendable {
 	override public func main() {
 		if isCancelled { return }
         
-        #if os(iOS)
-        let app = UIApplication.shared
-        backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-            self.backgroundTaskID = nil
-        }
-        defer {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-        }
-        #endif
-        
         for database in databases {
             if database.databaseScope == .public {
                 PublicDatabaseSubscriptions.pull(into: persistentContainer)

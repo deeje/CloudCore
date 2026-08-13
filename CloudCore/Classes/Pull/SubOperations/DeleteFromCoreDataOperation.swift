@@ -34,21 +34,6 @@ class DeleteFromCoreDataOperation: Operation, @unchecked Sendable {
 	
 	override func main() {
 		if self.isCancelled { return }
-		
-        #if os(iOS)
-        let app = UIApplication.shared
-        backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-            self.backgroundTaskID = nil
-        }
-        defer {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-        }
-        #endif
         
 		let childContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         childContext.performAndWait {

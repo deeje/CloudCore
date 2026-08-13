@@ -225,23 +225,6 @@ class CoreDataObserver {
             return
         }
         
-        #if os(iOS)
-        let app = UIApplication.shared
-        let name = "CoreDataObserver"
-        
-        backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-            self.backgroundTaskID = nil
-        }
-        defer {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-        }
-        #endif
-        
         isProcessing = true
 
         processContext.perform {

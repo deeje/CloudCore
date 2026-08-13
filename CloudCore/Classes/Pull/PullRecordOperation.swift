@@ -34,21 +34,6 @@ public class PullRecordOperation: PullOperation, @unchecked Sendable {
     override public func main() {
         if self.isCancelled { return }
         
-        #if os(iOS)
-        let app = UIApplication.shared
-        backgroundTaskID = app.beginBackgroundTask(withName: name) {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-            self.backgroundTaskID = nil
-        }
-        defer {
-            if let taskID = self.backgroundTaskID {
-                app.endBackgroundTask(taskID)
-            }
-        }
-        #endif
-        
         CloudCore.delegate?.willSyncFromCloud(scope: database.databaseScope)
         
         let backgroundContext = persistentContainer.newBackgroundContext()
