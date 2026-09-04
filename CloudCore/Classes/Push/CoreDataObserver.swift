@@ -63,7 +63,7 @@ class CoreDataObserver {
         processPersistentHistory()
 	}
 	
-	/// Observe Core Data willSave and didSave notifications
+	/// Observe Core Data willSave and didSave notifications, plus cross-process store changes
 	func start() {
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(self.willSave(notification:)),
@@ -72,7 +72,20 @@ class CoreDataObserver {
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(self.didSave(notification:)),
                                                name: .NSManagedObjectContextDidSave,
-                                               object: nil)        
+                                               object: nil)
+
+            // willSave/didSave are in-process only, so an app extension that pushes via
+            // performBackgroundPushTask leaves its transaction sitting in persistent history with
+            // nothing to notice it: until this, processPersistentHistory() was reached only by
+            // init, an in-process push save, an offline->online flip, or a pauseUntil expiry.  That
+            // could delay an extension's changes indefinitely while the host app ran, idle.
+            //
+            // processPersistentHistory() walks history from the stored token, so one pass sweeps
+            // whatever accumulated, and it already coalesces re-entrant calls.
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(self.processPersistentHistory),
+                                               name: .NSPersistentStoreRemoteChange,
+                                               object: persistentContainer.persistentStoreCoordinator)
 	}
 	
 	/// Remove Core Data observers
