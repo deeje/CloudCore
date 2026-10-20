@@ -161,6 +161,12 @@ open class CloudCore {
 		// FIXME: unsubscribe
 	}
 	
+    /// Checks that cached files still exist (e.g. weren't purged by the system), and resets any that are missing
+    /// so they re-download. CloudCore already does this on launch, on app activation, and when the cache directory changes.
+    public static func verifyCache() {
+        cacheManager?.verifyCachedFiles()
+    }
+
     /// return the user's record name
     public static func userRecordName() -> String? {
         return userRecordID?.recordName

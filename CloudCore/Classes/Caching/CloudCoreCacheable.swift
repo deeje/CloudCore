@@ -29,6 +29,26 @@ public enum RemoteStatus: String {
     case available
 }
 
+enum CloudCoreCacheableError {
+    static let localFileMissing = "Local file missing"
+}
+
+enum CloudCoreCacheDirectory {
+
+    /// the configured cache directory (created if needed), else Application Support
+    static var url: URL {
+        if let configuredDir = CloudCore.config.cacheDirectoryURL {
+            if !FileManager.default.fileExists(atPath: configuredDir.path) {
+                try? FileManager.default.createDirectory(at: configuredDir, withIntermediateDirectories: true)
+            }
+            return configuredDir
+        } else {
+            return try! FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        }
+    }
+
+}
+
 public protocol CloudCoreCacheable: CloudCoreType {
     
         // fully masked
@@ -95,26 +115,72 @@ public extension CloudCoreCacheable {
     }
     
     var url: URL {
-        let fileName = recordName! + (suffix ?? "")
+        return CloudCoreCacheDirectory.url.appendingPathComponent(fileName!)
+    }
 
-        let cacheDirectory: URL
-        if let configuredDir = CloudCore.config.cacheDirectoryURL {
-            if !FileManager.default.fileExists(atPath: configuredDir.path) {
-                try? FileManager.default.createDirectory(at: configuredDir, withIntermediateDirectories: true)
-            }
-            cacheDirectory = configuredDir
-        } else {
-            cacheDirectory = try! FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        }
+    /// name of the file within the cache directory
+    internal var fileName: String? {
+        guard let recordName else { return nil }
 
-        return cacheDirectory.appendingPathComponent(fileName)
+        return recordName + (suffix ?? "")
     }
     
     var data: Data? {
-        if localAvailable == true {
-            return try? Data(contentsOf: url)
-        } else {
-            return nil
+        guard ensureLocalFile() else { return nil }
+
+        return try? Data(contentsOf: url)
+    }
+
+    /// Returns true if the file is actually on disk.
+    ///
+    /// The system can purge cache directories (e.g. Library/Caches), so `cacheState` may claim a file is local
+    /// when it's gone. In that case, the state is reset so CloudCore re-downloads it (→ .download if available
+    /// remotely, else → .remote), and false is returned. Call sites observing the cacheable will update once
+    /// the download completes. Must be called on the object's context queue.
+    @discardableResult
+    func ensureLocalFile() -> Bool {
+        guard localAvailable else { return false }
+        if FileManager.default.fileExists(atPath: url.path) { return true }
+
+        guard let context = managedObjectContext else { return false }
+        let cacheableID = objectID
+        context.perform {
+            guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable,
+                  cacheable.localAvailable,
+                  !FileManager.default.fileExists(atPath: cacheable.url.path)
+            else { return }
+
+            cacheable.resetForMissingFile(download: true)
+
+            if context.hasChanges {
+                try? context.save()
+            }
+        }
+
+        return false
+    }
+
+    /// Resets state for a cacheable whose local file has gone missing.
+    internal func resetForMissingFile(download: Bool) {
+        switch cacheState {
+        case .cached:
+            operationID = nil
+            downloadProgress = 0
+            if download && remoteStatus == .available {
+                cacheState = .download
+            } else {
+                cacheState = .remote
+            }
+        case .unload:
+                // was being removed anyway
+            cacheState = .remote
+        case .local, .upload, .uploading:
+                // never made it to CloudKit, so nothing to recover from
+            if lastErrorMessage == nil {
+                lastErrorMessage = CloudCoreCacheableError.localFileMissing
+            }
+        default:
+            break
         }
     }
     
