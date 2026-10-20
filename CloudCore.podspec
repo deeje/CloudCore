@@ -10,10 +10,10 @@ Pod::Spec.new do |s|
     :tag => s.version.to_s
   }
 
-  s.ios.deployment_target = '15.0'
-  s.osx.deployment_target = '12.0'
-  s.tvos.deployment_target = '15.0'
-  s.watchos.deployment_target = '8.0'
+  s.ios.deployment_target = '26.0'
+  s.osx.deployment_target = '26.0'
+  s.tvos.deployment_target = '26.0'
+  s.watchos.deployment_target = '26.0'
 
   s.source_files = 'CloudCore/**/*.swift'
 
