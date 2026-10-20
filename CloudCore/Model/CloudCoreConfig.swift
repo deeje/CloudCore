@@ -88,6 +88,13 @@ public struct CloudCoreConfig {
     /// Default value is `nil` (uses `.applicationSupportDirectory`)
     public var cacheDirectoryURL: URL?
 
+    /// Base directory URL for files that must not be purged: pinned cacheables, and local
+    /// cacheables that haven't finished uploading. Once uploaded (and not pinned), files move
+    /// to `cacheDirectoryURL`. Should not be inside a Caches directory.
+    ///
+    /// Default value is `nil` (uses `.applicationSupportDirectory`)
+    public var persistentDirectoryURL: URL?
+
     /// minimum cache count
     ///
     /// Default value is 5 cacheables

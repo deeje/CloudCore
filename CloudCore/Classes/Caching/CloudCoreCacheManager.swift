@@ -168,17 +168,18 @@ class CloudCoreCacheManager: NSObject {
 
         context.perform {
             let fileManager = FileManager.default
-            let cacheDirectory = CloudCoreCacheDirectory.url
 
-                // one directory listing, rather than a stat per cacheable
-            let existingFileNames: Set<String>
-            if !fileManager.fileExists(atPath: cacheDirectory.path) {
-                existingFileNames = []
-            } else if let fileNames = try? fileManager.contentsOfDirectory(atPath: cacheDirectory.path) {
-                existingFileNames = Set(fileNames)
-            } else {
-                return
+                // one listing per directory, rather than a stat per cacheable
+            func fileNames(in directory: URL) -> Set<String>? {
+                if !fileManager.fileExists(atPath: directory.path) {
+                    return []
+                }
+                guard let fileNames = try? fileManager.contentsOfDirectory(atPath: directory.path) else { return nil }
+                return Set(fileNames)
             }
+            guard let cachedFileNames = fileNames(in: CloudCoreCacheDirectory.url),
+                  let persistentFileNames = fileNames(in: CloudCoreCacheDirectory.persistentURL)
+            else { return }
 
             let shouldExistStates: [CacheState] = [.local, .upload, .uploading, .cached, .unload]
             let shouldExist = NSPredicate(format: "%K IN %@", "cacheStateRaw", shouldExistStates.map { $0.rawValue })
@@ -188,28 +189,57 @@ class CloudCoreCacheManager: NSObject {
                 request.predicate = shouldExist
                 guard let cacheables = try? context.fetch(request) as? [CloudCoreCacheable] else { continue }
 
-                let missingIDs = cacheables
-                    .filter { cacheable in
-                        guard let fileName = cacheable.fileName,
-                              !existingFileNames.contains(fileName)
-                        else { return false }
+                var misplacedIDs: [NSManagedObjectID] = []
+                var missingIDs: [NSManagedObjectID] = []
 
-                            // already flagged as unrecoverable
-                        if cacheable.cacheState == .local || cacheable.cacheState == .upload || cacheable.cacheState == .uploading {
-                            return cacheable.lastErrorMessage == nil
+                for cacheable in cacheables {
+                    guard let fileName = cacheable.fileName else { continue }
+
+                    let inPersistent = persistentFileNames.contains(fileName)
+                    let inCache = cachedFileNames.contains(fileName)
+                    let inPlace = cacheable.needsPersistentStorage ? inPersistent : inCache
+
+                    if inPlace {
+                        continue
+                    } else if inPersistent || inCache {
+                        misplacedIDs.append(cacheable.objectID)
+                    } else if cacheable.cacheState == .local || cacheable.cacheState == .upload || cacheable.cacheState == .uploading {
+                            // unless already flagged as unrecoverable
+                        if cacheable.lastErrorMessage == nil {
+                            missingIDs.append(cacheable.objectID)
                         }
-                        return true
+                    } else {
+                        missingIDs.append(cacheable.objectID)
                     }
-                    .map { $0.objectID }
+                }
+
+                if !misplacedIDs.isEmpty {
+                    print("relocating \(misplacedIDs.count) cacheables")
+                    self.relocate(misplacedIDs)
+                }
 
                 guard !missingIDs.isEmpty else { continue }
 
                 print("resetting \(missingIDs.count) cacheables with missing files")
                 self.update(missingIDs) { cacheable in
-                        // re-check, the file may have landed since the directory was listed
-                    guard !fileManager.fileExists(atPath: cacheable.url.path) else { return }
+                        // re-check, the file may have landed since the directories were listed
+                    guard !cacheable.relocateIfNeeded() else { return }
                     cacheable.resetForMissingFile(download: false)
                 }
+            }
+        }
+    }
+
+    /// Moves files into the location their current state calls for (see `needsPersistentStorage`).
+    func relocate(_ cacheableIDs: [NSManagedObjectID]) {
+        let context = changingContext
+        context.perform {
+            for cacheableID in cacheableIDs {
+                guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable,
+                      cacheable.localAvailable
+                else { continue }
+
+                cacheable.relocateIfNeeded()
             }
         }
     }
@@ -358,7 +388,7 @@ class CloudCoreCacheManager: NSObject {
                     let cacheableIDs = cacheables.map { $0.objectID }
                     self.update(cacheableIDs) { cacheable in
                             // a purged file can't be uploaded, don't keep retrying
-                        guard FileManager.default.fileExists(atPath: cacheable.url.path) else {
+                        guard cacheable.relocateIfNeeded() else {
                             cacheable.resetForMissingFile(download: false)
                             return
                         }
@@ -491,9 +521,12 @@ class CloudCoreCacheManager: NSObject {
                     cacheable.cacheState = success ? .cached : .local
                     cacheable.remoteStatus = success ? .available : .pending
                     cacheable.lastErrorMessage = errorMessage
-                    
+
                     if success {
                         cacheable.lastUsed = Date()
+
+                            // safely in CloudKit now, so unless pinned, it can live in the purgeable cache
+                        cacheable.relocateIfNeeded()
                     }
                 }
             }
@@ -704,7 +737,15 @@ extension CloudCoreCacheManager: NSFetchedResultsControllerDelegate {
                     for type: NSFetchedResultsChangeType,
                     newIndexPath: IndexPath?) {
         guard let cacheable = anObject as? CloudCoreCacheable else { return }
-        
+
+            // pinned or unpinned, so the file belongs in the other location
+        if type == .insert || type == .delete,
+           cacheable.localAvailable,
+           pinnedFRCs.contains(where: { $0 === controller })
+        {
+            relocate([cacheable.objectID])
+        }
+
         switch cacheable.cacheState {
         case .upload, .download, .unload, .cancel:
             process(cacheables: [cacheable])

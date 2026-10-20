@@ -37,7 +37,16 @@ enum CloudCoreCacheDirectory {
 
     /// the configured cache directory (created if needed), else Application Support
     static var url: URL {
-        if let configuredDir = CloudCore.config.cacheDirectoryURL {
+        return directory(CloudCore.config.cacheDirectoryURL)
+    }
+
+    /// the configured persistent directory (created if needed), else Application Support
+    static var persistentURL: URL {
+        return directory(CloudCore.config.persistentDirectoryURL)
+    }
+
+    private static func directory(_ configuredDir: URL?) -> URL {
+        if let configuredDir {
             if !FileManager.default.fileExists(atPath: configuredDir.path) {
                 try? FileManager.default.createDirectory(at: configuredDir, withIntermediateDirectories: true)
             }
@@ -114,8 +123,64 @@ public extension CloudCoreCacheable {
         }
     }
     
+    /// Pinned files, and files that only exist locally (not yet in CloudKit), must survive
+    /// the system purging the cache directory. Based on cacheState, which isn't synced, so
+    /// a pull can't move the goalposts mid-upload.
+    var needsPersistentStorage: Bool {
+        if pinned { return true }
+
+        switch cacheState {
+        case .local, .upload, .uploading:
+            return true
+        case .cancel:
+            return remoteStatus == .pending
+        default:
+            return false
+        }
+    }
+
     var url: URL {
+        return needsPersistentStorage ? persistentFileURL : cacheFileURL
+    }
+
+    internal var persistentFileURL: URL {
+        return CloudCoreCacheDirectory.persistentURL.appendingPathComponent(fileName!)
+    }
+
+    internal var cacheFileURL: URL {
         return CloudCoreCacheDirectory.url.appendingPathComponent(fileName!)
+    }
+
+    /// whichever of the two locations `url` isn't
+    internal var alternateURL: URL {
+        return needsPersistentStorage ? cacheFileURL : persistentFileURL
+    }
+
+    /// Returns true if the file is at `url`. If instead it's in the other location (pinned state
+    /// changed, upload just completed, or a file from before persistent storage existed),
+    /// moves it to `url` and returns true. Returns false if it's in neither.
+    @discardableResult
+    func relocateIfNeeded() -> Bool {
+        guard fileName != nil else { return false }
+
+        let fileManager = FileManager.default
+        let destination = url
+        if fileManager.fileExists(atPath: destination.path) { return true }
+
+        let source = alternateURL
+        guard source != destination, fileManager.fileExists(atPath: source.path) else { return false }
+
+        do {
+            try fileManager.moveItem(at: source, to: destination)
+            return true
+        } catch {
+                // a concurrent relocation may have won the race
+            if fileManager.fileExists(atPath: destination.path) { return true }
+
+            CloudCore.delegate?.error(error: error, module: .cacheToCloud)
+                // still readable where it is, try again next time
+            return false
+        }
     }
 
     /// name of the file within the cache directory
@@ -140,14 +205,14 @@ public extension CloudCoreCacheable {
     @discardableResult
     func ensureLocalFile() -> Bool {
         guard localAvailable else { return false }
-        if FileManager.default.fileExists(atPath: url.path) { return true }
+        if relocateIfNeeded() { return true }
 
         guard let context = managedObjectContext else { return false }
         let cacheableID = objectID
         context.perform {
             guard let cacheable = try? context.existingObject(with: cacheableID) as? CloudCoreCacheable,
                   cacheable.localAvailable,
-                  !FileManager.default.fileExists(atPath: cacheable.url.path)
+                  !cacheable.relocateIfNeeded()
             else { return }
 
             cacheable.resetForMissingFile(download: true)
@@ -185,9 +250,11 @@ public extension CloudCoreCacheable {
     }
     
     func removeLocal() {
-        if localAvailable {
-            try? FileManager.default.removeItem(at: url)
-        }
+        guard localAvailable, fileName != nil else { return }
+
+            // could be in either location, mid-relocation
+        try? FileManager.default.removeItem(at: persistentFileURL)
+        try? FileManager.default.removeItem(at: cacheFileURL)
     }
     
 }
